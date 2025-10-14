@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="About the Student Finance Tracker app and the developer.">
+    <title>About | Student Finance Tracker</title>
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="stylesheet" href="styles/responsive.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="index.html">
+                    <img src="assets/alu_logo.png" alt="African Leadership University Logo">
+                </a>
+            </div>
+            <nav class="main-nav" aria-label="Main navigation">
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link" data-page="dashboard">Dashboard</a></li>
+                    <li><a href="index.html#records-table" class="nav-link" data-page="records">Records</a></li>
+                    <li><a href="about.html" class="nav-link active" data-page="about">About Student Finance Tracker</a></li>
+                    <li><a href="settings.html" class="nav-link" data-page="settings">Settings</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <button class="search-btn" aria-label="Search">🔍</button>
+                <a href="index.html#add-transaction-heading" class="btn header-btn-apply" data-page="add-transaction">New Expense</a>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <div class="container">
+            <section id="about" class="content-section" aria-labelledby="about-heading">
+                <h2 id="about-heading">About Student Finance Tracker</h2>
+                <div class="about-content">
+                    <p>Welcome to the <strong>Student Finance Tracker</strong> - a simple, powerful tool designed to help students like you take control of your finances. This app was built using only <strong>Vanilla JavaScript, HTML, and CSS</strong> as a project for Frontend_Web_Development - Summative Assignment - Building Responsive UI.</p>
+                    
+                    <h3>Purpose</h3>
+                    <p>Its main goal is to help you track your daily <strong>expenses</strong>, understand your <strong>spending habits</strong>, and ensure you stay within your <strong>budget</strong>. This is especially important for students with limited resources who need to plan carefully for things like food, transport, and tuition fees.</p>
+                    
+                    <h3>Developer & Contact</h3>
+                    <p><strong>Developer:</strong> Methode Duhujubumwe</p>
+                    <p><strong>GitHub:</strong> <a href="https://github.com/dumethode" target="_blank" rel="noopener">github.com/dumethode</a></p>
+                    
+                    <div class="contact-form-section">
+                        <h4>Have a Question? Contact Me</h4>
+                        <form id="contact-form" class="contact-form">
+                            <div class="form-group">
+                                <label for="contact-name">Your Name</label>
+                                <input type="text" id="contact-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="contact-email">Your Email</label>
+                                <input type="email" id="contact-email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="contact-message">Your Message</label>
+                                <textarea id="contact-message" rows="5" required></textarea>
+                            </div>
+                            <a href="mailto:m.duhujubum@alustudent.com" id="send-email-link" class="btn btn-primary no-underline">Send Email</a>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Student Finance Tracker | Designed by Methode Duhujubumwe</p>
+        </div>
+    </footer>
+    </body>
+</html>

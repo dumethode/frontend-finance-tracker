@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Settings for the Student Finance Tracker, including currency and data management.">
+    <title>Settings | Student Finance Tracker</title>
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="stylesheet" href="styles/responsive.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo">
+                <a href="index.html">
+                    <img src="assets/alu_logo.png" alt="African Leadership University Logo">
+                </a>
+            </div>
+            <nav class="main-nav" aria-label="Main navigation">
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link" data-page="dashboard">Dashboard</a></li>
+                    <li><a href="index.html#records-table" class="nav-link" data-page="records">Records</a></li>
+                    <li><a href="about.html" class="nav-link" data-page="about">About Student Finance Tracker</a></li>
+                    <li><a href="settings.html" class="nav-link active" data-page="settings">Settings</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <button class="search-btn" aria-label="Search">🔍</button>
+                <a href="index.html#add-transaction-heading" class="btn header-btn-apply" data-page="add-transaction">New Expense</a>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <div class="container">
+            <section id="settings-section" class="content-section" aria-labelledby="settings-heading">
+                <h2 id="settings-heading">Settings & Data Management</h2>
+                
+                <form id="settings-form">
+                    <div class="settings-group">
+                        <h3>Currency Settings</h3>
+                        <p>Choose your main currency for all totals and calculations.</p>
+                        <div class="form-group">
+                            <label for="base-currency">Base Currency:</label>
+                            <select id="base-currency" name="base-currency">
+                                <option value="USD">USD - US Dollar</option>
+                                <option value="RWF">RWF - Rwandan Franc</option>
+                                <option value="EUR">EUR - Euro</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-group" style="margin-top: 30px;">
+                        <h3>Monthly Budget Cap</h3>
+                        <p id="budget-status-display" role="status" aria-live="polite" class="budget-status">Current Budget: $0.00</p>
+                        <div class="form-group">
+                            <label for="budget-cap-input">Set Your Budget (in base currency):</label>
+                            <input type="number" id="budget-cap-input" name="budget-cap-input" min="0" step="0.01" placeholder="Enter amount">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="save-settings-btn" class="btn btn-primary">Save All Settings</button>
+                    </div>
+                </form>
+
+                <div class="settings-group" style="margin-top: 40px;">
+                    <h3>Data Management (Backup & Restore)</h3>
+                    <p>Your data is saved locally on your device. Use these tools to back it up or move it to a new device.</p>
+                    <div class="data-actions">
+                        <button id="export-btn" class="btn btn-secondary">Export Data (JSON)</button>
+                        <div class="import-section">
+                            <label for="import-file" class="btn btn-secondary import-label">Import Data (JSON)</label>
+                            <input type="file" id="import-file" accept=".json" style="display: none;">
+                        </div>
+                        <button id="clear-all-btn" class="btn btn-danger">Clear All Data</button>
+                    </div>
+                    <div id="settings-status" role="status" aria-live="polite"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Student Finance Tracker | Designed by Methode Duhujubumwe</p>
+        </div>
+    </footer>
+    <script type="module" src="scripts/ui.js"></script>
+</body>
+</html>

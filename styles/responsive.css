@@ -1,0 +1,122 @@
+/* styles/responsive.css */
+
+/* Desktop (Tablet and larger screens) Styles */
+@media (min-width: 768px) {
+    /* Limit the max width of the container for better readability on big screens */
+    .container {
+        max-width: 1200px; /* Increased max-width to give more space for header elements */
+    }
+    
+    /* Header Layout for Desktop */
+    .header-container {
+        flex-wrap: nowrap; /* Prevent wrapping on desktop */
+        justify-content: flex-start; /* Start items from the left */
+        gap: 20px; /* Space between logo, nav, and actions */
+    }
+
+    .logo img {
+        height: 60px; /* Larger logo for desktop */
+    }
+    
+    .main-nav {
+        flex-basis: auto; /* Don't take full width on desktop */
+        order: 0; /* Restore natural order */
+        margin-top: 0;
+        flex-grow: 1; /* Allows navigation to take up available space */
+        background-color: transparent; /* Transparent background for nav on desktop */
+        padding: 0;
+        border-radius: 0;
+    }
+
+    .nav-menu {
+        justify-content: flex-start; /* Align nav links to the left */
+        gap: 30px; /* Spacing between desktop nav links */
+        margin-left: 30px; /* Push nav slightly right from logo */
+    }
+
+    .nav-link {
+        font-size: 1rem;
+        padding: 12px 0; /* Adjust padding for desktop nav */
+        color: var(--color-white); /* White text on blue background */
+    }
+
+    .nav-link.active {
+        color: var(--color-white); /* Active link text remains white */
+        border-bottom: 3px solid var(--color-accent); /* Red underline for active link */
+        background-color: transparent; /* No background color for active on desktop */
+        border-radius: 0;
+    }
+    .nav-link:hover {
+        color: var(--color-accent); /* Red hover effect */
+        background-color: transparent;
+    }
+
+    .header-actions {
+        order: 0; /* Restore natural order */
+        margin-left: auto; /* Push actions to the far right */
+        gap: 20px;
+    }
+
+    /* Search button on desktop */
+    .search-btn {
+        font-size: 1.6rem;
+        padding: 0; /* Remove padding */
+    }
+
+    /* 'New Expense' button on desktop */
+    .header-btn-apply {
+        font-size: 0.9rem;
+        padding: 10px 20px;
+        border-radius: 3px; /* Slightly more subtle radius */
+    }
+
+    /* Dashboard: 4 columns */
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr); 
+    }
+
+    /* Forms: Group controls side-by-side */
+    .budget-controls {
+        flex-direction: row; 
+        align-items: center;
+    }
+    .budget-controls input {
+        width: 150px; 
+    }
+
+    /* Records: Move search and sort controls to be side-by-side */
+    .controls-section {
+        flex-direction: row; 
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+    .search-box {
+        flex-basis: 50%; 
+    }
+    .sort-controls {
+        display: flex;
+        gap: 10px;
+    }
+    
+    /* Contact form: Make it narrower */
+    .contact-form {
+        max-width: 500px;
+    }
+
+    /* Buttons: Don't grow 100% width, just fit content */
+    .form-actions {
+        flex-direction: row;
+    }
+    .btn {
+        flex-grow: 0;
+    }
+    
+    /* Data management buttons */
+    .data-actions {
+        flex-direction: row;
+        justify-content: flex-start;
+        flex-wrap: wrap; 
+        gap: 15px;
+        margin-top: 15px; /* UPDATED: Add space below the preceding paragraph */
+    }
+}
