@@ -18,15 +18,15 @@
                 </a>
             </div>
             <nav class="main-nav" aria-label="Main navigation">
-                <ul class="nav-menu">
-                    <li><a href="index.html" class="nav-link" data-page="dashboard">Dashboard</a></li>
-                    <li><a href="index.html#records-table" class="nav-link" data-page="records">Records</a></li>
-                    <li><a href="about.html" class="nav-link" data-page="about">About Student Finance Tracker</a></li>
-                    <li><a href="settings.html" class="nav-link active" data-page="settings">Settings</a></li>
-                </ul>
-            </nav>
+    <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link" data-page="dashboard" title="Dashboard" aria-label="Go to Dashboard"><span data-icon>&#x1F4CA;</span> Dashboard</a></li>
+        <li><a href="index.html#records-table" class="nav-link" data-page="records" title="Records" aria-label="View Records Table"><span data-icon>&#x1F4DC;</span> Records</a></li>
+        <li><a href="about.html" class="nav-link" data-page="about" title="About" aria-label="About the Tracker"><span data-icon>&#x1F4C3;</span> About</a></li>
+        <li><a href="settings.html" class="nav-link active" data-page="settings" title="Settings" aria-label="Go to Settings"><span data-icon>&#x2699;</span> Settings</a></li>
+    </ul>
+</nav>
             <div class="header-actions">
-                <button class="search-btn" aria-label="Search">🔍</button>
+                <button class="search-btn" aria-label="Search">&#x1F50D;</button>
                 <a href="index.html#add-transaction-heading" class="btn header-btn-apply" data-page="add-transaction">New Expense</a>
             </div>
         </div>
@@ -35,29 +35,52 @@
     <main id="main-content">
         <div class="container">
             <section id="settings-section" class="content-section" aria-labelledby="settings-heading">
-                <h2 id="settings-heading">Settings & Data Management</h2>
-                
-                <form id="settings-form">
+                <h2 id="settings-heading">Application Settings</h2>
+
+                <form id="settings-form" aria-labelledby="settings-heading">
+                    
                     <div class="settings-group">
-                        <h3>Currency Settings</h3>
-                        <p>Choose your main currency for all totals and calculations.</p>
-                        <div class="form-group">
-                            <label for="base-currency">Base Currency:</label>
-                            <select id="base-currency" name="base-currency">
-                                <option value="USD">USD - US Dollar</option>
-                                <option value="RWF">RWF - Rwandan Franc</option>
-                                <option value="EUR">EUR - Euro</option>
+                        <h3>General Settings</h3>
+                        
+                        <div class="form-group budget-controls">
+                            <label for="base-currency">Base Currency</label>
+                            <select id="base-currency" name="base-currency" required>
+                                <option value="USD">USD - US Dollar ($)</option>
+                                <option value="RWF">RWF - Rwandan Franc (R₣)</option>
+                                <option value="EUR">EUR - Euro (€)</option>
+                                <option value="GBP">GBP - British Pound (£)</option>
+                                <option value="KES">KES - Kenyan Shilling (Ksh)</option>
+                                <option value="ZAR">ZAR - South African Rand (R)</option>
+                                <option value="GHS">GHS - Ghanaian Cedi (GH₵)</option>
                             </select>
                         </div>
-                    </div>
 
-                    <div class="settings-group" style="margin-top: 30px;">
-                        <h3>Monthly Budget Cap</h3>
-                        <p id="budget-status-display" role="status" aria-live="polite" class="budget-status">Current Budget: $0.00</p>
-                        <div class="form-group">
-                            <label for="budget-cap-input">Set Your Budget (in base currency):</label>
-                            <input type="number" id="budget-cap-input" name="budget-cap-input" min="0" step="0.01" placeholder="Enter amount">
+                        <div class="form-group budget-controls">
+                            <label for="secondary-currency">Secondary Currency (Optional Display)</label>
+                            <select id="secondary-currency" name="secondary-currency">
+                                <option value="NONE">Do not display</option>
+                                <option value="USD">USD - US Dollar ($)</option>
+                                <option value="RWF">RWF - Rwandan Franc (R₣)</option>
+                                <option value="EUR">EUR - Euro (€)</option>
+                                <option value="GBP">GBP - British Pound (£)</option>
+                                <option value="KES">KES - Kenyan Shilling (Ksh)</option>
+                                <option value="ZAR">ZAR - South African Rand (R)</option>
+                                <option value="GHS">GHS - Ghanaian Cedi (GH₵)</option>
+                            </select>
                         </div>
+
+                        <div class="form-group">
+                            <label for="budget-cap-input">Monthly Budget Cap</label>
+                            <input type="number" id="budget-cap-input" name="budget-cap" min="0" step="0.01" required>
+                            <p class="current-status">Current Budget: <span id="budget-status-display">$0.00</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group" style="margin-top: 20px;">
+                        <h3>Manual Exchange Rates (Anchor Currency = USD)</h3>
+                        <p>Set the conversion rate for **1 USD** to your other chosen currencies.</p>
+                        <div class="exchange-rates-grid" id="exchange-rates-grid">
+                            </div>
                     </div>
 
                     <div class="form-actions">
@@ -69,14 +92,14 @@
                     <h3>Data Management (Backup & Restore)</h3>
                     <p>Your data is saved locally on your device. Use these tools to back it up or move it to a new device.</p>
                     <div class="data-actions">
-                        <button id="export-btn" class="btn btn-secondary">Export Data (JSON)</button>
+                        <button id="export-btn" class="btn btn-secondary"><span aria-hidden="true">&#x2B07;</span> Export Data (JSON)</button>
                         <div class="import-section">
-                            <label for="import-file" class="btn btn-secondary import-label">Import Data (JSON)</label>
+                            <label for="import-file" class="btn btn-secondary import-label"><span aria-hidden="true">&#x2B06;</span> Import Data (JSON)</label>
                             <input type="file" id="import-file" accept=".json" style="display: none;">
                         </div>
                         <button id="clear-all-btn" class="btn btn-danger">Clear All Data</button>
                     </div>
-                    <div id="settings-status" role="status" aria-live="polite"></div>
+                    <div id="settings-status" class="status-message" role="status" aria-live="polite"></div>
                 </div>
             </section>
         </div>
