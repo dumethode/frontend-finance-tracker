@@ -1,16 +1,23 @@
 // scripts/ui.js
 
 // 1. IMPORT ALL NECESSARY MODULES
-import { transactions, settings, initializeState, addTransaction, deleteTransaction, updateSettings, getTotalSpent } from './state.js';
-import { loadTransactions, saveTransactions, loadSettings, saveSettings, clearAllData } from './storage.js';
+import { 
+    transactions, settings, initializeState, addTransaction, deleteTransaction, 
+    updateSettings, updateTransaction, getTotalSpent 
+} from './state.js'; 
+import { 
+    loadTransactions, saveTransactions, loadSettings, saveSettings, clearAllData 
+} from './storage.js';
 import { validateTransaction } from './validators.js';
 import { filterTransactionsByRegex } from './search.js';
 
 
-// 2. DOM ELEMENT REFERENCES (A quick way to get elements from the HTML)
+// 2. DOM ELEMENT REFERENCES
 const DOMElements = {
     // Transaction Form Elements (index.html)
     transactionForm: document.getElementById('transaction-form'),
+    transactionIdInput: document.getElementById('transaction-id-input'), 
+    saveTransactionBtn: document.getElementById('save-transaction-btn'), 
     recordsTbody: document.getElementById('records-tbody'),
     noRecordsMessage: document.getElementById('no-records-message'),
     
@@ -26,110 +33,186 @@ const DOMElements = {
     sortOrderBtn: document.getElementById('sort-order-btn'),
 
     // Settings Page Elements (settings.html)
-    settingsForm: document.getElementById('settings-form'), // NEW: Reference to the whole form
+    settingsForm: document.getElementById('settings-form'), 
     baseCurrencySelect: document.getElementById('base-currency'),
+    secondaryCurrencySelect: document.getElementById('secondary-currency'), 
     budgetCapInput: document.getElementById('budget-cap-input'),
     budgetStatusDisplay: document.getElementById('budget-status-display'),
-    saveSettingsBtn: document.getElementById('save-settings-btn'), // The single save button
+    exportBtn: document.getElementById('export-btn'),             
+    importFile: document.getElementById('import-file'),           
     clearAllBtn: document.getElementById('clear-all-btn'),
+    settingsStatus: document.getElementById('settings-status'),   
+    exchangeRatesGrid: document.getElementById('exchange-rates-grid'), 
 };
 
+let isEditing = false; 
 
-// 3. HELPER FUNCTION: Currency Formatting
-// This function helps show money correctly (e.g., $5.00)
-function formatCurrency(amount) {
-    // Check if amount is a valid number, default to 0 if not
-    const numberAmount = isNaN(parseFloat(amount)) ? 0 : parseFloat(amount);
+// --- 3. HELPER FUNCTIONS ---
+
+/**
+ * Sorts the transactions array based on the current settings.
+ * @param {Array} arr - Array of transactions to sort.
+ * @returns {Array} The sorted array.
+ */
+function sortTransactions(arr) {
+    const key = settings.sortKey;
+    const order = settings.sortOrder; // 'asc' or 'desc'
     
+    // Use the spread operator to create a shallow copy before sorting (good practice)
+    const sorted = [...arr].sort((a, b) => {
+        let valA, valB;
+
+        // Convert to numbers for amount, and to Date objects for date comparison
+        if (key === 'amount') {
+            valA = parseFloat(a.amount);
+            valB = parseFloat(b.amount);
+        } else if (key === 'date') {
+            // Dates are compared as strings (YYYY-MM-DD) which works well
+            valA = a.date;
+            valB = b.date;
+        } else {
+            // Default to string comparison (case-insensitive) for description and category
+            valA = String(a[key]).toLowerCase();
+            valB = String(b[key]).toLowerCase();
+        }
+
+        if (valA < valB) return order === 'asc' ? -1 : 1;
+        if (valA > valB) return order === 'asc' ? 1 : -1;
+        return 0; // items are equal
+    });
+
+    return sorted;
+}
+
+
+/**
+ * Formats a number amount into a currency string based on settings.
+ * @param {number|string} amount - The numeric amount.
+ * @param {string} [currencyCode] - Optional currency code to override base setting.
+ * @returns {string} The formatted currency string.
+ */
+function formatCurrency(amount, currencyCode) {
+    const numberAmount = isNaN(parseFloat(amount)) ? 0 : parseFloat(amount);
+    const code = currencyCode || settings.baseCurrency;
+    
+    // A simplified symbol mapping to match the options in settings.html
+    const symbols = {
+        'USD': '$', 'RWF': 'R₣', 'EUR': '€', 'GBP': '£', 
+        'KES': 'Ksh', 'ZAR': 'R', 'GHS': 'GH₵'
+    };
+    
+    const symbol = symbols[code] || code;
+
     const formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: settings.baseCurrency, // Uses the currency stored in state
+        style: 'decimal', 
         minimumFractionDigits: 2,
     });
-    return formatter.format(numberAmount);
-}
-
-
-// 4. HELPER FUNCTION: Sorting Logic
-function sortTransactions(data) {
-    // (Sorting logic remains the same)
-    const { sortKey, sortOrder } = settings; 
-    const sortedData = [...data]; 
-
-    sortedData.sort((a, b) => {
-        let valA = a[sortKey];
-        let valB = b[sortKey];
-
-        if (sortKey === 'amount') {
-            valA = parseFloat(valA);
-            valB = parseFloat(valB);
-        } else if (sortKey === 'date') {
-            valA = new Date(valA).getTime();
-            valB = new Date(valB).getTime();
-        }
-
-        let comparison = 0;
-        if (valA > valB) {
-            comparison = 1;
-        } else if (valA < valB) {
-            comparison = -1;
-        }
-
-        return sortOrder === 'asc' ? comparison : comparison * -1;
-    });
-
-    return sortedData;
-}
-
-
-// 5. CORE RENDERING FUNCTION: Dashboard Summary (index.html)
-function renderDashboardSummary() {
-    if (!DOMElements.totalSpentDisplay) return; // Only run if on index.html
-
-    const totalSpent = getTotalSpent();
-    const budgetCap = settings.budgetCap;
-
-    // A. Update Total Spent
-    DOMElements.totalSpentDisplay.textContent = formatCurrency(totalSpent);
-
-    // B. Update Budget Remaining
-    const remaining = budgetCap - totalSpent;
-    DOMElements.budgetRemainingDisplay.textContent = formatCurrency(Math.abs(remaining));
     
-    if (remaining < 0) {
-        DOMElements.budgetRemainingDisplay.style.color = 'var(--color-accent)'; // Red (Over budget)
-    } else {
-        DOMElements.budgetRemainingDisplay.style.color = 'var(--color-primary)'; // Blue (Under budget)
+    return `${symbol}${formatter.format(numberAmount)}`;
+}
+
+/**
+ * Converts amount to secondary currency and returns the formatted string.
+ * @param {number} amount - The amount in the base currency.
+ * @returns {string} The secondary currency string in parentheses or an empty string.
+ */
+function convertToSecondaryCurrency(amount) {
+    if (settings.secondaryCurrency === 'NONE' || settings.secondaryCurrency === settings.baseCurrency) {
+        return ''; 
     }
 
-    // C. Find Top Category (Count based)
-    const categoryCounts = transactions.reduce((acc, t) => {
-        acc[t.category] = (acc[t.category] || 0) + 1;
+    const baseRate = settings.exchangeRates[settings.baseCurrency] || 1;
+    const secondaryRate = settings.exchangeRates[settings.secondaryCurrency] || 1;
+    
+    // Conversion formula: Amount in Base / Rate(1 USD=Base) * Rate(1 USD=Secondary)
+    // Note: If Base Currency is USD, baseRate is 1.
+    const amountInUSD = amount / baseRate; 
+    const convertedAmount = amountInUSD * secondaryRate;
+    
+    return ` (${formatCurrency(convertedAmount, settings.secondaryCurrency)})`;
+}
+
+/**
+ * Displays a success or error message on the screen.
+ * @param {HTMLElement} element - The DOM element to display the message in.
+ * @param {string} message - The message text.
+ * @param {string} type - 'success' or 'error'.
+ * @param {number} duration - Duration in milliseconds.
+ */
+function showStatusMessage(element, message, type = 'success', duration = 3000) {
+    element.textContent = message;
+    element.className = `status-message ${type}`;
+    element.style.visibility = 'visible';
+    element.style.opacity = '1';
+    
+    setTimeout(() => {
+        element.style.opacity = '0';
+        setTimeout(() => {
+            element.textContent = '';
+            element.className = 'status-message';
+            element.style.visibility = 'hidden';
+        }, 300);
+    }, duration);
+}
+
+
+// --- 4. CORE RENDERING FUNCTIONS (index.html) ---
+
+/**
+ * Renders the dashboard summary (totals, budget, top category).
+ */
+function renderDashboardSummary() {
+    if (!DOMElements.totalSpentDisplay) return; 
+
+    const totalSpent = getTotalSpent();
+    const budgetCap = settings.budgetCap || 0;
+
+    // A. Total Spent
+    const spentText = formatCurrency(totalSpent) + convertToSecondaryCurrency(totalSpent);
+    DOMElements.totalSpentDisplay.textContent = spentText;
+
+    // B. Budget Remaining
+    const remaining = budgetCap - totalSpent;
+    const remainingText = formatCurrency(remaining) + convertToSecondaryCurrency(remaining);
+    DOMElements.budgetRemainingDisplay.textContent = remainingText;
+    
+    // Apply red/blue color based on status
+    if (remaining < 0) {
+        DOMElements.budgetRemainingDisplay.style.color = 'var(--color-accent)'; 
+    } else {
+        DOMElements.budgetRemainingDisplay.style.color = 'var(--color-primary)'; 
+    }
+
+    // C. Find Top Category (using amount, not count)
+    const categoryTotals = transactions.reduce((acc, t) => {
+        const amount = parseFloat(t.amount || 0);
+        acc[t.category] = (acc[t.category] || 0) + amount;
         return acc;
     }, {});
     
     let topCategory = 'None';
-    let maxCount = 0;
-    for (const category in categoryCounts) {
-        if (categoryCounts[category] > maxCount) {
-            maxCount = categoryCounts[category];
+    let maxSpent = -Infinity;
+    for (const category in categoryTotals) {
+        // Only consider positive spending for 'top' category
+        if (categoryTotals[category] > maxSpent) {
+            maxSpent = categoryTotals[category];
             topCategory = category;
         }
     }
     DOMElements.topCategoryDisplay.textContent = topCategory;
-
-    // D. Update Total Transactions Count
+    
+    // D. Total Transactions Count
     DOMElements.totalTransactionsDisplay.textContent = transactions.length;
 }
 
-
-// 6. CORE RENDERING FUNCTION: Records Table (index.html)
+/**
+ * Renders the transactions table.
+ */
 function renderRecordsTable() {
-    if (!DOMElements.recordsTbody) return; // Only run if on index.html
+    if (!DOMElements.recordsTbody) return; 
     
     DOMElements.recordsTbody.innerHTML = '';
-    
-    const searchPattern = DOMElements.regexSearchInput.value;
+    const searchPattern = DOMElements.regexSearchInput?.value || '';
     let filteredTransactions = filterTransactionsByRegex(transactions, searchPattern);
     const sortedTransactions = sortTransactions(filteredTransactions);
 
@@ -137,209 +220,369 @@ function renderRecordsTable() {
         DOMElements.noRecordsMessage.style.display = 'block';
     } else {
         DOMElements.noRecordsMessage.style.display = 'none';
-        
         sortedTransactions.forEach(t => {
-            const row = DOMElements.recordsTbody.insertRow();
+            const row = document.createElement('tr');
+            const amountText = formatCurrency(t.amount) + convertToSecondaryCurrency(parseFloat(t.amount));
+
             row.innerHTML = `
-                <td>${t.date}</td>
                 <td>${t.description}</td>
-                <td class="amount">${formatCurrency(t.amount)}</td>
+                <td data-sort-value="${t.amount}">${amountText}</td>
                 <td>${t.category}</td>
-                <td><button data-id="${t.id}" class="btn btn-danger btn-sm delete-btn">Delete</button></td>
+                <td data-sort-value="${t.date}">${t.date}</td>
+                <td class="action-cell">
+                    <button class="btn btn-icon btn-edit" data-id="${t.id}" title="Edit" aria-label="Edit transaction ${t.description}">
+                        &#x270D;
+                    </button>
+                    <button class="btn btn-icon btn-danger" data-id="${t.id}" title="Delete" aria-label="Delete transaction ${t.description}">
+                        &#x274C;
+                    </button>
+                </td>
             `;
+            DOMElements.recordsTbody.appendChild(row);
         });
     }
 
-    renderDashboardSummary();
+    // Attach event listeners for Edit and Delete buttons
+    document.querySelectorAll('.btn-edit').forEach(button => {
+        button.addEventListener('click', handleEditTransaction);
+    });
+    document.querySelectorAll('.btn-danger').forEach(button => {
+        button.addEventListener('click', handleDeleteTransaction);
+    });
+}
+
+/**
+ * Renders the settings page controls and exchange rates.
+ */
+function renderSettings() {
+    if (!DOMElements.settingsForm) return; 
+
+    // A. Populate General Settings
+    DOMElements.baseCurrencySelect.value = settings.baseCurrency;
+    DOMElements.secondaryCurrencySelect.value = settings.secondaryCurrency || 'NONE'; 
+    DOMElements.budgetCapInput.value = settings.budgetCap;
+    DOMElements.budgetStatusDisplay.textContent = formatCurrency(settings.budgetCap);
+
+    // B. Populate Exchange Rates Grid
+    DOMElements.exchangeRatesGrid.innerHTML = ''; 
+    
+    for (const [code, rate] of Object.entries(settings.exchangeRates)) {
+        if (code !== 'USD') { 
+            const rateGroup = document.createElement('div');
+            rateGroup.className = 'exchange-rate-group';
+            rateGroup.innerHTML = `
+                <label for="rate-${code}">1 USD = ${code}</label>
+                <input type="number" id="rate-${code}" name="${code}" value="${rate}" step="0.0001" min="0.0001" required>
+            `;
+            DOMElements.exchangeRatesGrid.appendChild(rateGroup);
+        }
+    }
 }
 
 
-// 7. EVENT HANDLER: Transaction Form Submission (index.html)
-function handleFormSubmit(event) {
-    event.preventDefault(); 
-    // (Form submission logic remains the same)
-    const formData = {
-        description: document.getElementById('description').value,
-        amount: document.getElementById('amount').value,
-        category: document.getElementById('category').value,
-        date: document.getElementById('date').value,
-    };
-    
-    document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+// --- 5. EVENT HANDLERS ---
 
+// --- Transaction Handlers ---
+
+function resetTransactionForm() {
+    isEditing = false;
+    document.getElementById('add-transaction-heading').textContent = 'Add New Transaction';
+    DOMElements.saveTransactionBtn.textContent = 'Save Transaction';
+    DOMElements.transactionIdInput.value = ''; 
+    document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+    document.getElementById('form-status').textContent = ''; 
+    DOMElements.transactionForm.reset();
+}
+
+function handleEditTransaction(event) {
+    const transactionId = parseInt(event.currentTarget.dataset.id);
+    const transaction = transactions.find(t => t.id === transactionId);
+
+    if (transaction) {
+        isEditing = true;
+        document.getElementById('add-transaction-heading').textContent = 'Edit Existing Transaction';
+        DOMElements.saveTransactionBtn.textContent = 'Update Transaction';
+
+        // Populate form fields
+        DOMElements.transactionForm.description.value = transaction.description;
+        DOMElements.transactionForm.amount.value = parseFloat(transaction.amount); 
+        DOMElements.transactionForm.category.value = transaction.category;
+        DOMElements.transactionForm.date.value = transaction.date;
+        DOMElements.transactionIdInput.value = transaction.id; 
+
+        // Scroll to form
+        document.getElementById('add-transaction-heading').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function handleDeleteTransaction(event) {
+    const transactionId = parseInt(event.currentTarget.dataset.id);
+    if (confirm('Are you sure you want to delete this transaction?')) {
+        if (deleteTransaction(transactionId)) {
+            saveTransactions(transactions);
+            renderDashboardSummary();
+            renderRecordsTable();
+        }
+    }
+}
+
+function handleTransactionFormSubmit(event) {
+    event.preventDefault();
+
+    const formData = {
+        description: DOMElements.transactionForm.description.value,
+        amount: parseFloat(DOMElements.transactionForm.amount.value), // Ensure it's a number for validation
+        category: DOMElements.transactionForm.category.value,
+        date: DOMElements.transactionForm.date.value,
+    };
+    const transactionId = DOMElements.transactionIdInput.value;
+    const formStatus = document.getElementById('form-status');
+
+    // 2. Validate Data 
     const errors = validateTransaction(formData);
-    
+
+    document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
     if (Object.keys(errors).length > 0) {
         for (const key in errors) {
             document.getElementById(`${key}-error`).textContent = errors[key];
         }
-        document.getElementById('form-status').textContent = 'Please fix the errors above.';
-    } else {
-        addTransaction(formData); 
-        saveTransactions(transactions); 
-        
-        renderRecordsTable();
-        
-        DOMElements.transactionForm.reset();
-        document.getElementById('form-status').textContent = 'Transaction saved successfully!';
-        setTimeout(() => document.getElementById('form-status').textContent = '', 3000); 
+        showStatusMessage(formStatus, 'Please fix the errors above.', 'error', 5000);
+        return; 
     }
-}
 
-
-// 8. EVENT HANDLER: Delete Button Click (index.html)
-function handleDeleteClick(event) {
-    // (Delete logic remains the same)
-    if (event.target.classList.contains('delete-btn')) {
-        const transactionId = parseInt(event.target.dataset.id); 
-
-        if (confirm("Are you sure you want to delete this transaction?")) {
-            deleteTransaction(transactionId); 
-            saveTransactions(transactions);  
-            renderRecordsTable();           
+    // 3. Add or Update Transaction
+    let success = false;
+    if (isEditing && transactionId) {
+        success = updateTransaction(transactionId, formData);
+        if (success) {
+            showStatusMessage(formStatus, 'Transaction successfully UPDATED!', 'success');
+        } else {
+             showStatusMessage(formStatus, 'Error updating transaction.', 'error');
         }
+    } else {
+        addTransaction(formData);
+        success = true;
+        showStatusMessage(formStatus, 'Transaction successfully ADDED!', 'success');
+    }
+
+    if (success) {
+        saveTransactions(transactions); 
+        renderDashboardSummary();      
+        renderRecordsTable();          
+        
+        // Reset form for next entry
+        resetTransactionForm();
     }
 }
 
+// --- Search and Sort Handlers ---
 
-// 9. EVENT HANDLER: Sort Button and Search (index.html)
-function handleSortToggle() {
-    // (Sort toggle logic remains the same)
+function handleSortOrderToggle() {
     settings.sortOrder = settings.sortOrder === 'asc' ? 'desc' : 'asc';
-    
-    DOMElements.sortOrderBtn.textContent = settings.sortOrder === 'asc' ? '↑ Ascending' : '↓ Descending';
-    
     saveSettings(settings);
+    DOMElements.sortOrderBtn.textContent = settings.sortOrder === 'desc' ? '⬇️' : '⬆️';
     renderRecordsTable();
 }
 
 function handleSortChange() {
-    // (Sort change logic remains the same)
     settings.sortKey = DOMElements.sortBySelect.value;
     saveSettings(settings);
     renderRecordsTable();
 }
 
 
-// 10. EVENT HANDLER: Settings Page Save (settings.html)
-function handleSettingsSave(event) {
-    event.preventDefault(); // Stop the form from submitting and reloading the page
-    
-    if (!DOMElements.settingsForm) return; // Only run on settings page
+// --- Settings Handlers ---
 
-    const newCurrency = DOMElements.baseCurrencySelect.value;
-    const newBudgetCap = parseFloat(DOMElements.budgetCapInput.value);
+function handleSettingsFormSubmit(event) {
+    event.preventDefault();
 
-    // 1. Validate the budget input
-    if (isNaN(newBudgetCap) || newBudgetCap < 0) {
-        alert('Please enter a valid positive number for the budget.');
+    const newSettings = {
+        baseCurrency: DOMElements.baseCurrencySelect.value,
+        secondaryCurrency: DOMElements.secondaryCurrencySelect.value,
+        budgetCap: parseFloat(DOMElements.budgetCapInput.value) || 0,
+        exchangeRates: { USD: 1 }, 
+    };
+
+    // Gather manual exchange rates
+    let ratesValid = true;
+    document.querySelectorAll('#exchange-rates-grid input').forEach(input => {
+        const currencyCode = input.name;
+        const rate = parseFloat(input.value);
+        if (isNaN(rate) || rate <= 0) {
+            ratesValid = false;
+        }
+        newSettings.exchangeRates[currencyCode] = rate;
+    });
+
+    if (!ratesValid) {
+        showStatusMessage(DOMElements.settingsStatus, 'Error: All exchange rates must be positive numbers.', 'error', 5000);
         return;
     }
-
-    // 2. Update the state with new settings
-    updateSettings({
-        baseCurrency: newCurrency,
-        budgetCap: newBudgetCap,
-    });
     
-    // 3. Save settings to permanent storage
+    // Update state and storage
+    updateSettings(newSettings);
     saveSettings(settings);
+
+    // Re-render UI elements that rely on settings
+    renderSettings();
+    renderDashboardSummary();
+    renderRecordsTable(); 
     
-    // 4. Update UI displays
-    DOMElements.budgetStatusDisplay.textContent = `Current Budget: ${formatCurrency(settings.budgetCap)}`;
-    
-    // 5. Show success message
-    const statusEl = document.getElementById('settings-status');
-    if(statusEl) {
-        statusEl.textContent = 'Settings saved successfully!';
-        setTimeout(() => statusEl.textContent = '', 3000);
-    }
-    
-    // IMPORTANT: If we were on the dashboard, the budget formatting would now be correct!
-    // Since we're on the settings page, this just confirms the save.
+    showStatusMessage(DOMElements.settingsStatus, 'Settings successfully saved!', 'success');
 }
 
+function handleExportData() {
+    const exportData = {
+        settings: settings,
+        transactions: transactions,
+        exportDate: new Date().toISOString(),
+        version: '1.0.0', 
+    };
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sft-data-backup-${new Date().toISOString().slice(0, 10)}.json`; 
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-// 11. EVENT HANDLER: Clear All Data (settings.html)
+    showStatusMessage(DOMElements.settingsStatus, 'Data successfully EXPORTED to JSON file!', 'success');
+}
+
+function handleImportData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            
+            if (Array.isArray(importedData.transactions) && importedData.settings) {
+                
+                // 1. Process Settings: Merge with existing settings to ensure all keys are present
+                const defaultRates = { USD: 1, RWF: 1000, EUR: 0.92, GBP: 0.81, KES: 130, ZAR: 18.5, GHS: 14.8 };
+                const importedRates = { ...defaultRates, ...importedData.settings.exchangeRates, USD: 1 };
+
+                const newSettings = { 
+                    ...settings, 
+                    ...importedData.settings,
+                    exchangeRates: importedRates 
+                };
+
+                // 2. Apply and Save Data
+                initializeState(importedData.transactions); 
+                updateSettings(newSettings);      
+
+                saveTransactions(transactions);
+                saveSettings(settings);
+
+                // 3. Re-render UI
+                renderSettings();
+                renderDashboardSummary();
+                renderRecordsTable();
+
+                showStatusMessage(DOMElements.settingsStatus, `Successfully IMPORTED ${transactions.length} transactions!`, 'success');
+            } else {
+                throw new Error("JSON file missing 'transactions' or 'settings' object.");
+            }
+        } catch (error) {
+            console.error("Error importing data:", error);
+            showStatusMessage(DOMElements.settingsStatus, `Error importing file: ${error.message || 'Invalid JSON format.'}`, 'error', 5000);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; 
+}
+
 function handleClearAllData() {
-    if (confirm("WARNING: This will permanently delete ALL your transactions and settings. Are you absolutely sure?")) {
-        clearAllData(); 
-        initializeState([]); // Reset memory to empty
-        alert('All data has been cleared! The page will now reload.');
-        window.location.reload(); // Reload the page to show the reset state
+    if (confirm('WARNING: Are you sure you want to clear ALL saved data (transactions and settings)? This cannot be undone.')) {
+        clearAllData();
+        initializeState([]); // Reset transactions array
+        updateSettings({ 
+            budgetCap: 0, baseCurrency: 'USD', secondaryCurrency: 'RWF', 
+            exchangeRates: { USD: 1, RWF: 1000, EUR: 0.92, GBP: 0.81, KES: 130, ZAR: 18.5, GHS: 14.8 },
+            sortKey: 'date', sortOrder: 'desc'
+        }); // Reset settings
+        
+        // Re-render
+        if (DOMElements.settingsForm) renderSettings();
+        if (DOMElements.transactionForm) {
+            renderDashboardSummary();
+            renderRecordsTable();
+            resetTransactionForm();
+        }
+
+        showStatusMessage(DOMElements.settingsStatus || document.getElementById('form-status'), 'All data successfully CLEARED!', 'error', 5000);
     }
 }
 
 
-// 12. INITIALIZATION FUNCTION: Runs when the page first loads
+// --- 6. INITIALIZATION ---
+
 function init() {
-    // A. Load Data from Storage
+    // A. Load Data (FIX: Ensure data is loaded at start)
     const storedTransactions = loadTransactions();
-    initializeState(storedTransactions); 
-    
     const storedSettings = loadSettings();
+
+    initializeState(storedTransactions);
     if (storedSettings) {
         updateSettings(storedSettings); 
     }
     
-    // B. Set up Event Listeners for Index Page
+    // B. Set up Event Listeners (Transaction Form is only on index.html)
     if (DOMElements.transactionForm) {
-        DOMElements.transactionForm.addEventListener('submit', handleFormSubmit);
-        DOMElements.recordsTbody.addEventListener('click', handleDeleteClick);
-        DOMElements.sortOrderBtn.addEventListener('click', handleSortToggle);
+        DOMElements.transactionForm.addEventListener('submit', handleTransactionFormSubmit);
+        DOMElements.regexSearchInput.addEventListener('input', renderRecordsTable);
         DOMElements.sortBySelect.addEventListener('change', handleSortChange);
-        DOMElements.regexSearchInput.addEventListener('input', renderRecordsTable); 
-        
-        // Initial render of the table and summary
-        renderRecordsTable();
-        renderDashboardSummary();
+        DOMElements.sortOrderBtn.addEventListener('click', handleSortOrderToggle);
     }
-    
-    // C. Set up Event Listeners for Settings Page
-    if (DOMElements.settingsForm) {
-        // Set the current values of the settings inputs from the loaded state
-        DOMElements.baseCurrencySelect.value = settings.baseCurrency;
-        DOMElements.budgetCapInput.value = settings.budgetCap;
-        
-        // Display the current budget using the loaded currency
-        DOMElements.budgetStatusDisplay.textContent = `Current Budget: ${formatCurrency(settings.budgetCap)}`;
 
-        // Attach the save handler to the settings form submission
-        DOMElements.settingsForm.addEventListener('submit', handleSettingsSave);
-        
-        // Attach the clear data handler
+    // C. Settings Page Event Listeners
+    if (DOMElements.settingsForm) {
+        DOMElements.settingsForm.addEventListener('submit', handleSettingsFormSubmit);
+        DOMElements.exportBtn.addEventListener('click', handleExportData);
+        DOMElements.importFile.addEventListener('change', handleImportData);
         DOMElements.clearAllBtn.addEventListener('click', handleClearAllData);
     }
 
-    // D. Global Navigation Helper (Existing code from last revision)
-    const currentPath = window.location.pathname;
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-        if (link.href === window.location.href || 
-            (link.href.includes(currentPath) && currentPath !== "/") ||
-            (currentPath === "/" && link.dataset.page === "dashboard")) {
-            link.classList.add('active');
+    // D. Global Search Button (FIX: Corrected global search logic)
+    document.querySelector('.search-btn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
+        const controlsSection = document.getElementById('controls-section');
+
+        if (isIndexPage && controlsSection) {
+            // Scroll to the records/search area and focus the search input
+            controlsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            DOMElements.regexSearchInput?.focus();
+        } else {
+            // Navigate to the index page with a hash to hint the location
+            window.location.href = 'index.html#controls-section';
         }
     });
 
-    document.querySelectorAll('.nav-link[href*="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('href').split('#')[1];
-            const targetElement = document.getElementById(targetId);
-            if (targetElement) {
-                targetElement.scrollIntoView({ behavior: 'smooth' });
-                history.pushState(null, '', this.getAttribute('href'));
-            }
-        });
-    });
-
-    document.querySelector('.search-btn')?.addEventListener('click', () => {
-        if (currentPath === '/' || currentPath === '/index.html') {
-            document.getElementById('regex-search')?.focus();
-            document.getElementById('main-content')?.scrollIntoView({ behavior: 'smooth' });
-        } else {
-            window.location.href = 'index.html#main-content';
+    // E. Initial Render
+    if (DOMElements.transactionForm) {
+        renderDashboardSummary();
+        renderRecordsTable();
+    }
+    if (DOMElements.settingsForm) {
+        renderSettings();
+    }
+    
+    // F. Final navigation check (highlight active link)
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        link.classList.remove('active');
+        const href = link.getAttribute('href');
+        // Check if the current URL matches the link's href or if it's the dashboard link on the root/index page
+        if (window.location.href.includes(href) || 
+            (link.dataset.page === "dashboard" && (window.location.pathname === '/' || window.location.pathname.endsWith('index.html')))) {
+            link.classList.add('active');
         }
     });
 }
