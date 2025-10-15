@@ -15,17 +15,17 @@ function isNotEmpty(value) {
 }
 
 /**
- * Checks if a value is a valid positive number (including currency format).
- * @param {string} value - The input value to check.
- * @returns {boolean} True if it's a positive number, false otherwise.
+ * Checks if a value is a valid currency number (positive, negative, or zero).
+ * @param {string|number} value - The input value to check.
+ * @returns {boolean} True if it's a valid number, false otherwise.
  */
-function isPositiveNumber(value) {
-    // Regular Expression to allow for numbers, decimals, and ensure it's positive.
-    const numberRegex = /^\d+(\.\d{1,2})?$/; 
+function isValidCurrencyNumber(value) {
+    // Regex allows for optional leading minus sign, digits, and an optional decimal with 1-2 digits
+    const numberRegex = /^-?\d+(\.\d{1,2})?$/; 
     const num = parseFloat(value);
     
-    // Check if the format matches and the parsed number is greater than zero
-    return numberRegex.test(value) && num > 0;
+    // Check if the format matches AND the parsed number is finite (not NaN, Infinity)
+    return numberRegex.test(String(value)) && isFinite(num);
 }
 
 /**
@@ -41,9 +41,9 @@ export function validateTransaction(formData) {
         errors.description = "Description is required.";
     }
     
-    // Rule 2: Amount must be a positive number (like 5.00 or 123)
-    if (!isPositiveNumber(formData.amount)) {
-        errors.amount = "Must be a valid positive number (e.g., 5.00).";
+    // Rule 2: Amount must be a valid number (allowing negative for refunds)
+    if (!isValidCurrencyNumber(formData.amount)) {
+        errors.amount = "Must be a valid number (e.g., 5.00 or -10.50 for refunds).";
     }
 
     // Rule 3: Category must be selected
@@ -51,11 +51,10 @@ export function validateTransaction(formData) {
         errors.category = "Please select a category.";
     }
 
-    // Rule 4: Date must be filled (HTML 'required' handles most of this, but we double-check)
+    // Rule 4: Date must be filled
     if (!isNotEmpty(formData.date)) {
         errors.date = "Date is required.";
     }
 
-    // If the errors object is empty, the data is valid!
     return errors;
 }
