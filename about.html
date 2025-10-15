@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About the Student Finance Tracker app and the developer.">
-    <title>About | Student Finance Tracker</title>
+    <meta name="description" content="Student Finance Tracker - Track your expenses and manage your budget">
+    <title>Dashboard | Student Finance Tracker</title>
     <link rel="stylesheet" href="styles/style.css">
     <link rel="stylesheet" href="styles/responsive.css">
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <header class="main-header">
         <div class="container header-container">
             <div class="logo">
@@ -18,15 +19,15 @@
                 </a>
             </div>
             <nav class="main-nav" aria-label="Main navigation">
-                <ul class="nav-menu">
-                    <li><a href="index.html" class="nav-link" data-page="dashboard">Dashboard</a></li>
-                    <li><a href="index.html#records-table" class="nav-link" data-page="records">Records</a></li>
-                    <li><a href="about.html" class="nav-link active" data-page="about">About Student Finance Tracker</a></li>
-                    <li><a href="settings.html" class="nav-link" data-page="settings">Settings</a></li>
-                </ul>
-            </nav>
+    <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link active" data-page="dashboard" title="Dashboard" aria-label="Go to Dashboard"><span data-icon>&#x1F4CA;</span> Dashboard</a></li>
+        <li><a href="index.html#records-table" class="nav-link" data-page="records" title="Records" aria-label="View Records Table"><span data-icon>&#x1F4DC;</span> Records</a></li>
+        <li><a href="about.html" class="nav-link" data-page="about" title="About" aria-label="About the Tracker"><span data-icon>&#x1F4C3;</span> About</a></li>
+        <li><a href="settings.html" class="nav-link" data-page="settings" title="Settings" aria-label="Go to Settings"><span data-icon>&#x2699;</span> Settings</a></li>
+    </ul>
+</nav>
             <div class="header-actions">
-                <button class="search-btn" aria-label="Search">🔍</button>
+                <button class="search-btn" aria-label="Search">&#x1F50D;</button>
                 <a href="index.html#add-transaction-heading" class="btn header-btn-apply" data-page="add-transaction">New Expense</a>
             </div>
         </div>
@@ -34,37 +35,112 @@
 
     <main id="main-content">
         <div class="container">
-            <section id="about" class="content-section" aria-labelledby="about-heading">
-                <h2 id="about-heading">About Student Finance Tracker</h2>
-                <div class="about-content">
-                    <p>Welcome to the <strong>Student Finance Tracker</strong> - a simple, powerful tool designed to help students like you take control of your finances. This app was built using only <strong>Vanilla JavaScript, HTML, and CSS</strong> as a project for Frontend_Web_Development - Summative Assignment - Building Responsive UI.</p>
-                    
-                    <h3>Purpose</h3>
-                    <p>Its main goal is to help you track your daily <strong>expenses</strong>, understand your <strong>spending habits</strong>, and ensure you stay within your <strong>budget</strong>. This is especially important for students with limited resources who need to plan carefully for things like food, transport, and tuition fees.</p>
-                    
-                    <h3>Developer & Contact</h3>
-                    <p><strong>Developer:</strong> Methode Duhujubumwe</p>
-                    <p><strong>GitHub:</strong> <a href="https://github.com/dumethode" target="_blank" rel="noopener">github.com/dumethode</a></p>
-                    
-                    <div class="contact-form-section">
-                        <h4>Have a Question? Contact Me</h4>
-                        <form id="contact-form" class="contact-form">
-                            <div class="form-group">
-                                <label for="contact-name">Your Name</label>
-                                <input type="text" id="contact-name" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="contact-email">Your Email</label>
-                                <input type="email" id="contact-email" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="contact-message">Your Message</label>
-                                <textarea id="contact-message" rows="5" required></textarea>
-                            </div>
-                            <a href="mailto:m.duhujubum@alustudent.com" id="send-email-link" class="btn btn-primary no-underline">Send Email</a>
-                        </form>
+
+            <section id="dashboard" class="content-section" aria-labelledby="dashboard-heading">
+                <h2 id="dashboard-heading">Dashboard Summary</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Spent This Month</h3>
+                        <p class="stat-value" id="total-spent">$0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Budget Remaining</h3>
+                        <p class="stat-value" id="budget-remaining">$0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Top Expense Category</h3>
+                        <p class="stat-value" id="top-category">None</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Transactions</h3>
+                        <p class="stat-value" id="total-transactions">0</p>
                     </div>
                 </div>
+
+                <h2 style="margin-top: 30px;" id="records-heading">Transaction Records</h2>
+                
+                <div id="controls-section" class="controls-section"> 
+                    <div class="search-box">
+                        <label for="regex-search" class="visually-hidden">Search Transactions</label>
+                        <input type="text" id="regex-search" placeholder="&#x1F50D; Search by description (supports regex)">
+                    </div>
+                    <div class="sort-controls">
+                        <label for="sort-by">Sort By:</label>
+                        <select id="sort-by">
+                            <option value="date">Date</option>
+                            <option value="amount">Amount</option>
+                            <option value="category">Category</option>
+                            <option value="description">Description</option>
+                        </select>
+                        <button id="sort-order-btn" class="btn btn-secondary" aria-label="Toggle sort order">&#x2B07;</button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table id="records-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="records-tbody">
+                            </tbody>
+                    </table>
+                </div>
+                <p id="no-records-message" style="text-align: center; margin-top: 20px; display: none;">No records found. Add a transaction above.</p>
+            </section>
+
+            <section id="add-transaction" class="content-section" aria-labelledby="add-transaction-heading">
+                <h2 id="add-transaction-heading">Add New Transaction</h2>
+                <form id="transaction-form" class="transaction-form">
+                    
+                    <input type="hidden" id="transaction-id-input" name="id" value=""> 
+
+                    <div class="form-group">
+                        <label for="description">Description *</label>
+                        <input type="text" id="description" name="description" required placeholder="e.g., Lunch at ALU Cafeteria">
+                        <span class="error-message" id="description-error"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="amount">Amount *</label>
+                        <input type="number" id="amount" name="amount" min="-1000000" step="0.01" required placeholder="e.g., 5.00 or -50.00 for refund">
+                        <span class="error-message" id="amount-error"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Category *</label>
+                        <select id="category" name="category" required>
+                            <option value="">Select a Category</option>
+                            <option value="Food">Food</option>
+                            <option value="Books">Books/Supplies</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Fees">Fees/Tuition</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <span class="error-message" id="category-error"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">Date *</label>
+                        <input type="date" id="date" name="date" required>
+                        <span class="error-message" id="date-error"></span>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="save-transaction-btn" class="btn btn-primary">Save Transaction</button>
+                        <button type="reset" class="btn btn-secondary">Clear Form</button>
+                    </div>
+
+                    <div id="form-status" role="status" aria-live="polite" class="status-message"></div>
+                </form>
+
             </section>
         </div>
     </main>
@@ -74,5 +150,7 @@
             <p>&copy; 2025 Student Finance Tracker | Designed by Methode Duhujubumwe</p>
         </div>
     </footer>
-    </body>
+
+    <script type="module" src="scripts/ui.js"></script>
+</body>
 </html>
