@@ -9,12 +9,22 @@
 // 1. Array to hold all the expense records (transactions)
 export let transactions = [];
 
-// 2. Variables for budget and currency settings
+// 2. Variables for budget and currency settings (with defaults for new features)
 export let settings = {
-    budgetCap: 0,         // The maximum amount a student wants to spend (default is 0)
-    baseCurrency: 'USD',  // The currency symbol to display (default is US Dollar)
-    sortKey: 'date',      // The column to sort the table by (default is 'date')
-    sortOrder: 'desc',    // The direction to sort (default is 'descending' or newest first)
+    budgetCap: 0,         
+    baseCurrency: 'USD',  
+    secondaryCurrency: 'RWF', // NEW: The secondary currency for display
+    exchangeRates: {      // NEW: Manual exchange rates (Anchor Currency: USD)
+        USD: 1,           
+        RWF: 1000,        // 1 USD = 1000 RWF (Example rate)
+        EUR: 0.92,        
+        GBP: 0.81,        
+        KES: 130,         
+        ZAR: 18.5,        
+        GHS: 14.8,        
+    },
+    sortKey: 'date',      
+    sortOrder: 'desc',    
 };
 
 // 3. Simple ID tracker to give each transaction a unique number (like a receipt ID)
@@ -33,10 +43,11 @@ export function initializeState(newTransactions) {
         
         // Find the highest ID and set 'nextId' one above it
         if (transactions.length > 0) {
-            const maxId = Math.max(...transactions.map(t => t.id));
+            // Ensure IDs are numbers before finding the max
+            const maxId = Math.max(...transactions.map(t => parseInt(t.id) || 0));
             nextId = maxId + 1;
         } else {
-            nextId = 1;
+            nextId = 0;
         }
     }
 }
@@ -48,11 +59,41 @@ export function initializeState(newTransactions) {
  */
 export function addTransaction(transactionData) {
     const newTransaction = {
-        id: nextId++, // Assign the current ID and then increase it for the next one
-        ...transactionData // Copy all other details (description, amount, etc.)
+        id: nextId++, 
+        // Ensure amount is saved as a string to preserve decimal precision if needed
+        amount: String(transactionData.amount),
+        ...transactionData 
     };
-    transactions.unshift(newTransaction); // Add to the start of the list (so it shows up first)
+    transactions.unshift(newTransaction); 
     return newTransaction;
+}
+
+/**
+ * NEW: Updates an existing transaction by its unique ID.
+ * @param {number} id - The ID of the transaction to update.
+ * @param {Object} newData - The new data to merge into the existing transaction.
+ * @returns {boolean} True if the transaction was updated, false otherwise.
+ */
+export function updateTransaction(id, newData) {
+    const numericId = parseInt(id);
+    const index = transactions.findIndex(t => t.id === numericId);
+    if (index !== -1) {
+        const updatedData = {
+            ...newData,
+            // Ensure the amount is stored as a string
+            amount: String(newData.amount)
+        };
+        transactions[index] = { 
+            ...transactions[index], 
+            ...updatedData, 
+            id: numericId // Ensure ID is preserved
+        };
+        // Optional: Move the updated transaction to the top for visibility
+        const updatedTransaction = transactions.splice(index, 1)[0];
+        transactions.unshift(updatedTransaction);
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -60,10 +101,10 @@ export function addTransaction(transactionData) {
  * @param {number} id - The ID of the transaction to delete.
  */
 export function deleteTransaction(id) {
+    const numericId = parseInt(id);
     const initialLength = transactions.length;
-    // Keep only the transactions whose ID does NOT match the one we want to delete
-    transactions = transactions.filter(t => t.id !== id);
-    return transactions.length !== initialLength; // Returns true if a transaction was deleted
+    transactions = transactions.filter(t => t.id !== numericId);
+    return transactions.length !== initialLength; 
 }
 
 /**
@@ -76,6 +117,6 @@ export function updateSettings(newSettings) {
 
 // Simple function to calculate the total money spent
 export function getTotalSpent() {
-    // We use parseFloat to make sure we are adding numbers, not text
+    // Ensure all amounts are treated as numbers
     return transactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 }
