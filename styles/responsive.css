@@ -1,122 +1,130 @@
 /* styles/responsive.css */
 
-/* Desktop (Tablet and larger screens) Styles */
+/* -------------------------------------------------------------------------- */
+/* TABLET (Medium Screens: 768px and up) */
+/* -------------------------------------------------------------------------- */
 @media (min-width: 768px) {
-    /* Limit the max width of the container for better readability on big screens */
     .container {
-        max-width: 1200px; /* Increased max-width to give more space for header elements */
+        width: 85%; /* Slightly wider container on tablets */
     }
-    
-    /* Header Layout for Desktop */
+
+    /* 1. Header & Navigation */
     .header-container {
-        flex-wrap: nowrap; /* Prevent wrapping on desktop */
-        justify-content: flex-start; /* Start items from the left */
-        gap: 20px; /* Space between logo, nav, and actions */
+        flex-wrap: nowrap; /* Prevent wrapping in the header */
+        gap: 20px;
     }
-
-    .logo img {
-        height: 60px; /* Larger logo for desktop */
-    }
-    
     .main-nav {
-        flex-basis: auto; /* Don't take full width on desktop */
-        order: 0; /* Restore natural order */
+        flex-basis: auto; /* Allow nav to shrink/grow based on content */
+        order: 0; /* Put nav back in the center */
         margin-top: 0;
-        flex-grow: 1; /* Allows navigation to take up available space */
-        background-color: transparent; /* Transparent background for nav on desktop */
+        background-color: transparent; /* No background color on desktop nav */
         padding: 0;
-        border-radius: 0;
     }
-
     .nav-menu {
-        justify-content: flex-start; /* Align nav links to the left */
-        gap: 30px; /* Spacing between desktop nav links */
-        margin-left: 30px; /* Push nav slightly right from logo */
+        gap: 15px; /* Increase space between nav items */
     }
 
+    /* Adjust nav link styling for icons on desktop */
     .nav-link {
-        font-size: 1rem;
-        padding: 12px 0; /* Adjust padding for desktop nav */
-        color: var(--color-white); /* White text on blue background */
+        padding: 10px 15px;
+        font-size: 1.5rem; /* Make icons larger */
+        color: var(--color-white); /* White icons on blue header */
+        /* HIDE TEXT (The HTML should be updated to use icons only as per last instructions) */
+        text-align: center;
     }
-
     .nav-link.active {
-        color: var(--color-white); /* Active link text remains white */
-        border-bottom: 3px solid var(--color-accent); /* Red underline for active link */
-        background-color: transparent; /* No background color for active on desktop */
+        color: var(--color-accent); /* Active icon is red */
+        border-bottom: 3px solid var(--color-accent); 
+        background-color: transparent;
         border-radius: 0;
     }
     .nav-link:hover {
-        color: var(--color-accent); /* Red hover effect */
+        color: var(--color-accent);
         background-color: transparent;
     }
-
-    .header-actions {
-        order: 0; /* Restore natural order */
-        margin-left: auto; /* Push actions to the far right */
+    .search-btn {
+        font-size: 1.8rem;
+    }
+    
+    /* 2. Dashboard Stats Grid */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr); /* Two columns on tablets */
         gap: 20px;
     }
-
-    /* Search button on desktop */
-    .search-btn {
-        font-size: 1.6rem;
-        padding: 0; /* Remove padding */
-    }
-
-    /* 'New Expense' button on desktop */
-    .header-btn-apply {
-        font-size: 0.9rem;
-        padding: 10px 20px;
-        border-radius: 3px; /* Slightly more subtle radius */
-    }
-
-    /* Dashboard: 4 columns */
-    .stats-grid {
-        grid-template-columns: repeat(4, 1fr); 
-    }
-
-    /* Forms: Group controls side-by-side */
-    .budget-controls {
-        flex-direction: row; 
-        align-items: center;
-    }
-    .budget-controls input {
-        width: 150px; 
-    }
-
-    /* Records: Move search and sort controls to be side-by-side */
-    .controls-section {
-        flex-direction: row; 
-        justify-content: space-between;
-        align-items: flex-end;
-    }
-    .search-box {
-        flex-basis: 50%; 
-    }
-    .sort-controls {
-        display: flex;
-        gap: 10px;
-    }
     
-    /* Contact form: Make it narrower */
-    .contact-form {
-        max-width: 500px;
-    }
-
-    /* Buttons: Don't grow 100% width, just fit content */
+    /* 3. Forms and Controls */
     .form-actions {
-        flex-direction: row;
+        flex-direction: row; /* Horizontal buttons */
+        gap: 20px;
     }
     .btn {
-        flex-grow: 0;
+        flex-grow: 1; /* Allow buttons to grow evenly in form actions */
     }
-    
-    /* Data management buttons */
+
+    .controls-section {
+        flex-direction: row; /* Horizontal layout for search and sort */
+        justify-content: space-between;
+        align-items: center;
+    }
+    .search-box {
+        flex-grow: 1; 
+        max-width: 400px;
+    }
+    .search-box input[type="text"] {
+        margin-bottom: 0; /* Remove extra margin */
+    }
+
+    /* 4. Settings Data Actions */
     .data-actions {
         flex-direction: row;
+        gap: 20px;
         justify-content: flex-start;
-        flex-wrap: wrap; 
-        gap: 15px;
-        margin-top: 15px; /* UPDATED: Add space below the preceding paragraph */
+    }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* DESKTOP (Large Screens: 1024px and up) */
+/* -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+    .container {
+        width: 80%; /* Even wider container on desktop */
+        max-width: 1200px; /* Optional max width */
+    }
+    
+    /* 1. Dashboard Stats Grid */
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr); /* Four columns on desktop */
+    }
+    
+    /* 2. Transaction Form Layout */
+    .transaction-form {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); /* 4 columns for inputs */
+        gap: 20px;
+    }
+    .form-group {
+        margin-bottom: 0; /* Remove vertical margin from form groups */
+    }
+    /* Make the form actions span the full width of the grid */
+    .form-actions {
+        grid-column: 1 / -1; 
+        justify-content: flex-start; /* Align buttons to the left */
+    }
+    .form-actions .btn {
+        flex-grow: 0; /* Don't force buttons to stretch */
+        min-width: 180px;
+    }
+
+    /* 3. About Page Contact Form */
+    .contact-form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    /* Message box spans two columns */
+    .contact-form textarea,
+    #send-email-link {
+        grid-column: 1 / -1; 
     }
 }
