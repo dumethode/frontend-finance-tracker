@@ -2,66 +2,57 @@
 
 /**
  * The 'state' is the central place to hold all the app's current data.
- * Think of it as the app's 'memory' while it is open.
- * We use 'export' so other JavaScript files can read and write to this memory.
+ * This module ensures transactions have unique IDs and proper timestamps.
  */
 
-// 1. Array to hold all the expense records (transactions)
 export let transactions = [];
 
-// 2. Variables for budget and currency settings (with defaults for new features)
 export let settings = {
     budgetCap: 0,         
     baseCurrency: 'USD',  
-    secondaryCurrency: 'RWF', // NEW: The secondary currency for display
-    exchangeRates: {      // NEW: Manual exchange rates (Anchor Currency: USD)
-        USD: 1,           
-        RWF: 1000,        // 1 USD = 1000 RWF (Example rate)
-        EUR: 0.92,        
-        GBP: 0.81,        
-        KES: 130,         
-        ZAR: 18.5,        
-        GHS: 14.8,        
-    },
     sortKey: 'date',      
     sortOrder: 'desc',    
 };
 
-// 3. Simple ID tracker to give each transaction a unique number (like a receipt ID)
 let nextId = 0;
 
-// --- FUNCTIONS TO MANAGE THE STATE ---
-
 /**
- * Updates the 'transactions' array and recalculates the 'nextId'.
- * This is usually called right after loading data from localStorage.
- * @param {Array} newTransactions - The list of transactions loaded from storage.
+ * Initializes state from loaded data and sets the next available ID.
  */
-export function initializeState(newTransactions) {
+export function initializeState(newTransactions, newSettings) {
     if (Array.isArray(newTransactions)) {
-        transactions = newTransactions;
+        transactions = newTransactions.map(t => ({
+            ...t,
+            id: parseInt(t.id),
+            // Ensure createdAt and updatedAt exist for records imported without them
+            createdAt: t.createdAt || new Date().toISOString(),
+            updatedAt: t.updatedAt || t.createdAt || new Date().toISOString() 
+        }));
         
-        // Find the highest ID and set 'nextId' one above it
         if (transactions.length > 0) {
-            // Ensure IDs are numbers before finding the max
-            const maxId = Math.max(...transactions.map(t => parseInt(t.id) || 0));
+            const validIds = transactions.map(t => parseInt(t.id)).filter(id => !isNaN(id));
+            const maxId = validIds.length > 0 ? Math.max(...validIds) : 0;
             nextId = maxId + 1;
         } else {
-            nextId = 0;
+            nextId = 1;
         }
+    }
+
+    if (newSettings) {
+        settings = { ...settings, ...newSettings };
     }
 }
 
+
 /**
- * Adds a new transaction to the 'transactions' array.
- * @param {Object} transactionData - The transaction details (description, amount, category, date).
- * @returns {Object} The complete transaction object with the new ID.
+ * Adds a new transaction.
  */
 export function addTransaction(transactionData) {
+    const now = new Date().toISOString();
     const newTransaction = {
         id: nextId++, 
-        // Ensure amount is saved as a string to preserve decimal precision if needed
-        amount: String(transactionData.amount),
+        createdAt: now,
+        updatedAt: now, // NEW: Initial updatedAt
         ...transactionData 
     };
     transactions.unshift(newTransaction); 
@@ -69,47 +60,40 @@ export function addTransaction(transactionData) {
 }
 
 /**
- * NEW: Updates an existing transaction by its unique ID.
- * @param {number} id - The ID of the transaction to update.
- * @param {Object} newData - The new data to merge into the existing transaction.
- * @returns {boolean} True if the transaction was updated, false otherwise.
+ * Updates an existing transaction.
  */
-export function updateTransaction(id, newData) {
-    const numericId = parseInt(id);
-    const index = transactions.findIndex(t => t.id === numericId);
+export function updateTransaction(updatedTransactionData) {
+    const id = updatedTransactionData.id;
+    const index = transactions.findIndex(t => t.id === id);
+    
     if (index !== -1) {
-        const updatedData = {
-            ...newData,
-            // Ensure the amount is stored as a string
-            amount: String(newData.amount)
-        };
-        transactions[index] = { 
+        // Keep the original createdAt and id, overwrite everything else, and update updatedAt
+        transactions[index] = {
             ...transactions[index], 
-            ...updatedData, 
-            id: numericId // Ensure ID is preserved
+            ...updatedTransactionData,
+            updatedAt: new Date().toISOString() // NEW: Update timestamp
         };
-        // Optional: Move the updated transaction to the top for visibility
-        const updatedTransaction = transactions.splice(index, 1)[0];
-        transactions.unshift(updatedTransaction);
+        
+        // Move to the front for better UX if sorting by date (desc)
+        const [movedTransaction] = transactions.splice(index, 1);
+        transactions.unshift(movedTransaction);
+        
         return true;
     }
     return false;
 }
 
 /**
- * Deletes a transaction by its unique ID.
- * @param {number} id - The ID of the transaction to delete.
+ * Deletes a transaction.
  */
 export function deleteTransaction(id) {
-    const numericId = parseInt(id);
     const initialLength = transactions.length;
-    transactions = transactions.filter(t => t.id !== numericId);
-    return transactions.length !== initialLength; 
+    transactions = transactions.filter(t => t.id !== id);
+    return transactions.length !== initialLength;
 }
 
 /**
  * Overwrites the settings object with new values.
- * @param {Object} newSettings - The new settings object (e.g., {baseCurrency: 'RWF'}).
  */
 export function updateSettings(newSettings) {
     settings = { ...settings, ...newSettings };
@@ -117,6 +101,5 @@ export function updateSettings(newSettings) {
 
 // Simple function to calculate the total money spent
 export function getTotalSpent() {
-    // Ensure all amounts are treated as numbers
     return transactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 }
