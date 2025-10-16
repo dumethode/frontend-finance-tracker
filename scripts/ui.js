@@ -1,25 +1,20 @@
 // scripts/ui.js
 
 // 1. IMPORT ALL NECESSARY MODULES
-import { 
-    transactions, settings, initializeState, addTransaction, deleteTransaction, 
-    updateSettings, updateTransaction, getTotalSpent 
-} from './state.js'; 
-import { 
-    loadTransactions, saveTransactions, loadSettings, saveSettings, clearAllData 
-} from './storage.js';
+import { transactions, settings, initializeState, addTransaction, deleteTransaction, updateTransaction, updateSettings, getTotalSpent } from './state.js';
+import { loadTransactions, saveTransactions, loadSettings, saveSettings, clearAllData } from './storage.js';
 import { validateTransaction } from './validators.js';
-import { filterTransactionsByRegex } from './search.js';
-
+import { filterTransactionsByRegex, compileRegex, highlight } from './search.js'; // NEW IMPORTS
 
 // 2. DOM ELEMENT REFERENCES
 const DOMElements = {
     // Transaction Form Elements (index.html)
     transactionForm: document.getElementById('transaction-form'),
-    transactionIdInput: document.getElementById('transaction-id-input'), 
-    saveTransactionBtn: document.getElementById('save-transaction-btn'), 
+    transactionIdInput: document.getElementById('transaction-id'), 
+    clearFormBtn: document.getElementById('clear-form-btn'), 
     recordsTbody: document.getElementById('records-tbody'),
     noRecordsMessage: document.getElementById('no-records-message'),
+    saveTransactionBtn: document.querySelector('#transaction-form .btn-primary'),
     
     // Dashboard Summary Elements (index.html)
     totalSpentDisplay: document.getElementById('total-spent'),
@@ -35,425 +30,356 @@ const DOMElements = {
     // Settings Page Elements (settings.html)
     settingsForm: document.getElementById('settings-form'), 
     baseCurrencySelect: document.getElementById('base-currency'),
-    secondaryCurrencySelect: document.getElementById('secondary-currency'), 
-    budgetCapInput: document.getElementById('budget-cap-input'),
+    budgetCapInput: document.getElementById('budget-cap'), 
+    settingsStatus: document.getElementById('settings-status'),
     budgetStatusDisplay: document.getElementById('budget-status-display'),
-    exportBtn: document.getElementById('export-btn'),             
-    importFile: document.getElementById('import-file'),           
+    
+    // Data Management Buttons (settings.html)
+    exportBtn: document.getElementById('export-btn'),
+    importFile: document.getElementById('import-file'),
     clearAllBtn: document.getElementById('clear-all-btn'),
-    settingsStatus: document.getElementById('settings-status'),   
-    exchangeRatesGrid: document.getElementById('exchange-rates-grid'), 
+
+    // Header buttons (for navigation)
+    searchBtn: document.querySelector('.search-btn'),
 };
 
-let isEditing = false; 
+let liveSearchRegex = null; // Stores the compiled regex for highlighting
 
-// --- 3. HELPER FUNCTIONS ---
-
-/**
- * Sorts the transactions array based on the current settings.
- * @param {Array} arr - Array of transactions to sort.
- * @returns {Array} The sorted array.
- */
-function sortTransactions(arr) {
-    const key = settings.sortKey;
-    const order = settings.sortOrder; // 'asc' or 'desc'
+// --- HELPER FUNCTION: Clear the form and reset edit mode ---
+function clearForm() {
+    if (DOMElements.transactionForm) DOMElements.transactionForm.reset();
+    if (DOMElements.transactionIdInput) DOMElements.transactionIdInput.value = ''; 
+    if (DOMElements.saveTransactionBtn) DOMElements.saveTransactionBtn.textContent = 'Save Transaction'; 
     
-    // Use the spread operator to create a shallow copy before sorting (good practice)
-    const sorted = [...arr].sort((a, b) => {
-        let valA, valB;
-
-        // Convert to numbers for amount, and to Date objects for date comparison
-        if (key === 'amount') {
-            valA = parseFloat(a.amount);
-            valB = parseFloat(b.amount);
-        } else if (key === 'date') {
-            // Dates are compared as strings (YYYY-MM-DD) which works well
-            valA = a.date;
-            valB = b.date;
-        } else {
-            // Default to string comparison (case-insensitive) for description and category
-            valA = String(a[key]).toLowerCase();
-            valB = String(b[key]).toLowerCase();
-        }
-
-        if (valA < valB) return order === 'asc' ? -1 : 1;
-        if (valA > valB) return order === 'asc' ? 1 : -1;
-        return 0; // items are equal
+    // Clear error messages
+    const errorIds = ['description-error', 'amount-error', 'category-error', 'date-error'];
+    errorIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '';
     });
-
-    return sorted;
 }
 
 
+// 3. CORE RENDERING FUNCTIONS
+
 /**
- * Formats a number amount into a currency string based on settings.
- * @param {number|string} amount - The numeric amount.
- * @param {string} [currencyCode] - Optional currency code to override base setting.
- * @returns {string} The formatted currency string.
+ * Formats a raw number value into the display currency format.
  */
-function formatCurrency(amount, currencyCode) {
-    const numberAmount = isNaN(parseFloat(amount)) ? 0 : parseFloat(amount);
-    const code = currencyCode || settings.baseCurrency;
-    
-    // A simplified symbol mapping to match the options in settings.html
-    const symbols = {
-        'USD': '$', 'RWF': 'R₣', 'EUR': '€', 'GBP': '£', 
-        'KES': 'Ksh', 'ZAR': 'R', 'GHS': 'GH₵'
-    };
-    
-    const symbol = symbols[code] || code;
-
-    const formatter = new Intl.NumberFormat('en-US', {
-        style: 'decimal', 
-        minimumFractionDigits: 2,
-    });
-    
-    return `${symbol}${formatter.format(numberAmount)}`;
+function formatCurrency(amount) {
+    const num = parseFloat(amount || 0);
+    return `${settings.baseCurrency} ${num.toFixed(2)}`;
 }
 
 /**
- * Converts amount to secondary currency and returns the formatted string.
- * @param {number} amount - The amount in the base currency.
- * @returns {string} The secondary currency string in parentheses or an empty string.
- */
-function convertToSecondaryCurrency(amount) {
-    if (settings.secondaryCurrency === 'NONE' || settings.secondaryCurrency === settings.baseCurrency) {
-        return ''; 
-    }
-
-    const baseRate = settings.exchangeRates[settings.baseCurrency] || 1;
-    const secondaryRate = settings.exchangeRates[settings.secondaryCurrency] || 1;
-    
-    // Conversion formula: Amount in Base / Rate(1 USD=Base) * Rate(1 USD=Secondary)
-    // Note: If Base Currency is USD, baseRate is 1.
-    const amountInUSD = amount / baseRate; 
-    const convertedAmount = amountInUSD * secondaryRate;
-    
-    return ` (${formatCurrency(convertedAmount, settings.secondaryCurrency)})`;
-}
-
-/**
- * Displays a success or error message on the screen.
- * @param {HTMLElement} element - The DOM element to display the message in.
- * @param {string} message - The message text.
- * @param {string} type - 'success' or 'error'.
- * @param {number} duration - Duration in milliseconds.
- */
-function showStatusMessage(element, message, type = 'success', duration = 3000) {
-    element.textContent = message;
-    element.className = `status-message ${type}`;
-    element.style.visibility = 'visible';
-    element.style.opacity = '1';
-    
-    setTimeout(() => {
-        element.style.opacity = '0';
-        setTimeout(() => {
-            element.textContent = '';
-            element.className = 'status-message';
-            element.style.visibility = 'hidden';
-        }, 300);
-    }, duration);
-}
-
-
-// --- 4. CORE RENDERING FUNCTIONS (index.html) ---
-
-/**
- * Renders the dashboard summary (totals, budget, top category).
+ * Updates all the summary numbers on the dashboard.
  */
 function renderDashboardSummary() {
-    if (!DOMElements.totalSpentDisplay) return; 
-
     const totalSpent = getTotalSpent();
-    const budgetCap = settings.budgetCap || 0;
+    const budgetCap = parseFloat(settings.budgetCap || 0);
+    const budgetRemaining = budgetCap - totalSpent;
 
-    // A. Total Spent
-    const spentText = formatCurrency(totalSpent) + convertToSecondaryCurrency(totalSpent);
-    DOMElements.totalSpentDisplay.textContent = spentText;
-
-    // B. Budget Remaining
-    const remaining = budgetCap - totalSpent;
-    const remainingText = formatCurrency(remaining) + convertToSecondaryCurrency(remaining);
-    DOMElements.budgetRemainingDisplay.textContent = remainingText;
-    
-    // Apply red/blue color based on status
-    if (remaining < 0) {
-        DOMElements.budgetRemainingDisplay.style.color = 'var(--color-accent)'; 
-    } else {
-        DOMElements.budgetRemainingDisplay.style.color = 'var(--color-primary)'; 
-    }
-
-    // C. Find Top Category (using amount, not count)
     const categoryTotals = transactions.reduce((acc, t) => {
+        const category = t.category || 'Other';
         const amount = parseFloat(t.amount || 0);
-        acc[t.category] = (acc[t.category] || 0) + amount;
+        if (amount > 0) acc[category] = (acc[category] || 0) + amount; 
         return acc;
     }, {});
-    
-    let topCategory = 'None';
-    let maxSpent = -Infinity;
+
+    let topCategory = 'N/A';
+    let maxSpent = 0;
     for (const category in categoryTotals) {
-        // Only consider positive spending for 'top' category
         if (categoryTotals[category] > maxSpent) {
             maxSpent = categoryTotals[category];
             topCategory = category;
         }
     }
-    DOMElements.topCategoryDisplay.textContent = topCategory;
+
+    // 1. Dashboard updates
+    if (DOMElements.totalSpentDisplay) DOMElements.totalSpentDisplay.textContent = formatCurrency(totalSpent);
+    if (DOMElements.budgetRemainingDisplay) DOMElements.budgetRemainingDisplay.textContent = formatCurrency(budgetRemaining);
+    if (DOMElements.topCategoryDisplay) DOMElements.topCategoryDisplay.textContent = topCategory;
+    if (DOMElements.totalTransactionsDisplay) DOMElements.totalTransactionsDisplay.textContent = transactions.length;
     
-    // D. Total Transactions Count
-    DOMElements.totalTransactionsDisplay.textContent = transactions.length;
+    // 2. Settings page budget status update
+    if (DOMElements.budgetStatusDisplay) DOMElements.budgetStatusDisplay.textContent = `Current Budget: ${formatCurrency(budgetCap)}`;
+
+
+    // 3. Visual styling for budget remaining
+    if (DOMElements.budgetRemainingDisplay) {
+        DOMElements.budgetRemainingDisplay.parentElement.classList.remove('bg-red', 'bg-green');
+        
+        // Use polite ARIA live region for status change
+        let statusMessage = '';
+        if (budgetRemaining < 0) {
+            DOMElements.budgetRemainingDisplay.parentElement.classList.add('bg-red');
+            statusMessage = `Warning: You have exceeded your budget cap by ${formatCurrency(Math.abs(budgetRemaining))}.`;
+            DOMElements.budgetRemainingDisplay.setAttribute('aria-live', 'assertive'); // Assertive for negative
+        } else if (budgetRemaining > 0) {
+            DOMElements.budgetRemainingDisplay.parentElement.classList.add('bg-green');
+            statusMessage = `You have ${formatCurrency(budgetRemaining)} remaining in your budget.`;
+            DOMElements.budgetRemainingDisplay.setAttribute('aria-live', 'polite'); // Polite for positive
+        } else {
+            DOMElements.budgetRemainingDisplay.setAttribute('aria-live', 'polite');
+        }
+        
+        // This is a simple ARIA live update. The display itself is the live region.
+        // For more complex alerts, we'd use a dedicated hidden element.
+        if (DOMElements.budgetRemainingDisplay.textContent !== formatCurrency(budgetRemaining)) {
+             // Screen reader only announces the value change, not the status message string
+        }
+    }
 }
 
 /**
- * Renders the transactions table.
+ * Creates the HTML table row for a single transaction, including highlighting.
  */
-function renderRecordsTable() {
-    if (!DOMElements.recordsTbody) return; 
+function createTransactionRow(t) {
+    const displayAmount = formatCurrency(t.amount);
     
-    DOMElements.recordsTbody.innerHTML = '';
-    const searchPattern = DOMElements.regexSearchInput?.value || '';
-    let filteredTransactions = filterTransactionsByRegex(transactions, searchPattern);
+    const formatTimestamp = (ts) => ts ? new Date(ts).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+    
+    const createdAtDate = formatTimestamp(t.createdAt);
+    
+    // REQUIRED: Apply highlighting using the live search regex
+    const markedDescription = highlight(t.description, liveSearchRegex);
+
+    const formattedId = String(t.id).padStart(4, '0');
+
+    return `
+        <tr>
+            <td data-label="ID">${formattedId}</td>
+            <td data-label="Created At">${createdAtDate}</td>
+            <td data-label="Date">${t.date}</td>
+            <td data-label="Amount">${displayAmount}</td>
+            <td data-label="Category">${t.category}</td>
+            <td data-label="Description">${markedDescription}</td>
+            <td class="action-cell" data-label="Actions">
+                <button class="btn-icon btn-edit" data-id="${t.id}" aria-label="Edit transaction ID ${formattedId}">&#x270E;</button>
+                <button class="btn-icon btn-delete" data-id="${t.id}" aria-label="Delete transaction ID ${formattedId}">&#x2715;</button>
+            </td>
+        </tr>
+    `;
+}
+
+/**
+ * Robust sorting function.
+ */
+function sortTransactions(arr) {
+    const key = settings.sortKey;
+    const order = settings.sortOrder === 'asc' ? 1 : -1;
+
+    return [...arr].sort((a, b) => {
+        let valA = a[key];
+        let valB = b[key];
+        let comparison = 0;
+
+        if (key === 'amount' || key === 'id') {
+            valA = parseFloat(valA || 0);
+            valB = parseFloat(valB || 0);
+            comparison = valA - valB;
+        } 
+        else if (key === 'date' || key === 'createdAt' || key === 'updatedAt') {
+            if (valA < valB) comparison = -1;
+            if (valA > valB) comparison = 1;
+        }
+        else { // String comparison (description, category)
+            if (valA < valB) comparison = -1;
+            if (valA > valB) comparison = 1;
+        }
+
+        return comparison * order;
+    });
+}
+
+
+/**
+ * Main function to render the entire transaction table.
+ */
+export function renderTransactionTable() {
+    const tBody = DOMElements.recordsTbody;
+    if (!tBody) return; 
+
+    const searchPattern = DOMElements.regexSearchInput ? DOMElements.regexSearchInput.value : '';
+    
+    // 1. Compile the Regex for filtering and highlighting
+    liveSearchRegex = compileRegex(searchPattern); // Uses search.js
+
+    // 2. Filter, then Sort
+    const filteredTransactions = filterTransactionsByRegex(transactions, searchPattern); // Uses search.js
     const sortedTransactions = sortTransactions(filteredTransactions);
 
-    if (sortedTransactions.length === 0) {
-        DOMElements.noRecordsMessage.style.display = 'block';
-    } else {
-        DOMElements.noRecordsMessage.style.display = 'none';
-        sortedTransactions.forEach(t => {
-            const row = document.createElement('tr');
-            const amountText = formatCurrency(t.amount) + convertToSecondaryCurrency(parseFloat(t.amount));
+    tBody.innerHTML = ''; 
 
-            row.innerHTML = `
-                <td>${t.description}</td>
-                <td data-sort-value="${t.amount}">${amountText}</td>
-                <td>${t.category}</td>
-                <td data-sort-value="${t.date}">${t.date}</td>
-                <td class="action-cell">
-                    <button class="btn btn-icon btn-edit" data-id="${t.id}" title="Edit" aria-label="Edit transaction ${t.description}">
-                        &#x270D;
-                    </button>
-                    <button class="btn btn-icon btn-danger" data-id="${t.id}" title="Delete" aria-label="Delete transaction ${t.description}">
-                        &#x274C;
-                    </button>
-                </td>
-            `;
-            DOMElements.recordsTbody.appendChild(row);
-        });
+    if (sortedTransactions.length === 0) {
+        if (DOMElements.noRecordsMessage) {
+            DOMElements.noRecordsMessage.textContent = liveSearchRegex === null ? 'No transactions found. Add one below!' : 'No transactions match your search pattern.';
+            DOMElements.noRecordsMessage.style.display = 'block';
+        } else {
+             tBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px;">${liveSearchRegex === null ? 'No transactions found.' : 'No transactions match your search pattern.'}</td></tr>`;
+        }
+        return;
     }
 
-    // Attach event listeners for Edit and Delete buttons
-    document.querySelectorAll('.btn-edit').forEach(button => {
-        button.addEventListener('click', handleEditTransaction);
-    });
-    document.querySelectorAll('.btn-danger').forEach(button => {
-        button.addEventListener('click', handleDeleteTransaction);
-    });
+    if (DOMElements.noRecordsMessage) DOMElements.noRecordsMessage.style.display = 'none';
+    
+    // 3. Render
+    const rowsHtml = sortedTransactions.map(createTransactionRow).join('');
+    tBody.innerHTML = rowsHtml;
 }
 
 /**
- * Renders the settings page controls and exchange rates.
+ * The master render function that calls all necessary UI updates.
  */
-function renderSettings() {
-    if (!DOMElements.settingsForm) return; 
-
-    // A. Populate General Settings
-    DOMElements.baseCurrencySelect.value = settings.baseCurrency;
-    DOMElements.secondaryCurrencySelect.value = settings.secondaryCurrency || 'NONE'; 
-    DOMElements.budgetCapInput.value = settings.budgetCap;
-    DOMElements.budgetStatusDisplay.textContent = formatCurrency(settings.budgetCap);
-
-    // B. Populate Exchange Rates Grid
-    DOMElements.exchangeRatesGrid.innerHTML = ''; 
+function masterRender() {
+    saveTransactions(transactions);
+    saveSettings(settings);
     
-    for (const [code, rate] of Object.entries(settings.exchangeRates)) {
-        if (code !== 'USD') { 
-            const rateGroup = document.createElement('div');
-            rateGroup.className = 'exchange-rate-group';
-            rateGroup.innerHTML = `
-                <label for="rate-${code}">1 USD = ${code}</label>
-                <input type="number" id="rate-${code}" name="${code}" value="${rate}" step="0.0001" min="0.0001" required>
-            `;
-            DOMElements.exchangeRatesGrid.appendChild(rateGroup);
-        }
+    renderDashboardSummary();
+    renderTransactionTable();
+    
+    // Update settings form values if we are on the settings page
+    if (DOMElements.settingsForm) {
+        DOMElements.baseCurrencySelect.value = settings.baseCurrency;
+        DOMElements.budgetCapInput.value = settings.budgetCap;
     }
 }
 
+// 4. EVENT HANDLERS
 
-// --- 5. EVENT HANDLERS ---
-
-// --- Transaction Handlers ---
-
-function resetTransactionForm() {
-    isEditing = false;
-    document.getElementById('add-transaction-heading').textContent = 'Add New Transaction';
-    DOMElements.saveTransactionBtn.textContent = 'Save Transaction';
-    DOMElements.transactionIdInput.value = ''; 
-    document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
-    document.getElementById('form-status').textContent = ''; 
-    DOMElements.transactionForm.reset();
-}
-
-function handleEditTransaction(event) {
-    const transactionId = parseInt(event.currentTarget.dataset.id);
-    const transaction = transactions.find(t => t.id === transactionId);
-
-    if (transaction) {
-        isEditing = true;
-        document.getElementById('add-transaction-heading').textContent = 'Edit Existing Transaction';
-        DOMElements.saveTransactionBtn.textContent = 'Update Transaction';
-
-        // Populate form fields
-        DOMElements.transactionForm.description.value = transaction.description;
-        DOMElements.transactionForm.amount.value = parseFloat(transaction.amount); 
-        DOMElements.transactionForm.category.value = transaction.category;
-        DOMElements.transactionForm.date.value = transaction.date;
-        DOMElements.transactionIdInput.value = transaction.id; 
-
-        // Scroll to form
-        document.getElementById('add-transaction-heading').scrollIntoView({ behavior: 'smooth' });
-    }
-}
-
-function handleDeleteTransaction(event) {
-    const transactionId = parseInt(event.currentTarget.dataset.id);
-    if (confirm('Are you sure you want to delete this transaction?')) {
-        if (deleteTransaction(transactionId)) {
-            saveTransactions(transactions);
-            renderDashboardSummary();
-            renderRecordsTable();
-        }
-    }
-}
-
-function handleTransactionFormSubmit(event) {
+/**
+ * Handles form submission for adding or updating a transaction.
+ */
+function handleTransactionSubmit(event) {
     event.preventDefault();
+    
+    const transactionId = DOMElements.transactionIdInput.value ? parseInt(DOMElements.transactionIdInput.value) : null;
 
     const formData = {
-        description: DOMElements.transactionForm.description.value,
-        amount: parseFloat(DOMElements.transactionForm.amount.value), // Ensure it's a number for validation
+        id: transactionId, 
+        description: DOMElements.transactionForm.description.value.trim(),
+        amount: DOMElements.transactionForm.amount.value.trim(),
         category: DOMElements.transactionForm.category.value,
         date: DOMElements.transactionForm.date.value,
     };
-    const transactionId = DOMElements.transactionIdInput.value;
-    const formStatus = document.getElementById('form-status');
+    
+    const errors = validateTransaction(formData); // Uses validators.js
+    
+    // Clear old errors and display new ones
+    document.getElementById('description-error').textContent = errors.description || '';
+    document.getElementById('amount-error').textContent = errors.amount || '';
+    document.getElementById('category-error').textContent = errors.category || '';
+    document.getElementById('date-error').textContent = errors.date || '';
 
-    // 2. Validate Data 
-    const errors = validateTransaction(formData);
-
-    document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
     if (Object.keys(errors).length > 0) {
-        for (const key in errors) {
-            document.getElementById(`${key}-error`).textContent = errors[key];
-        }
-        showStatusMessage(formStatus, 'Please fix the errors above.', 'error', 5000);
-        return; 
+        displayStatusMessage('Error: Please fix the issues in the form.', 'error');
+        return;
     }
 
-    // 3. Add or Update Transaction
-    let success = false;
-    if (isEditing && transactionId) {
-        success = updateTransaction(transactionId, formData);
-        if (success) {
-            showStatusMessage(formStatus, 'Transaction successfully UPDATED!', 'success');
+    if (transactionId !== null) {
+        // FIX: UPDATE Existing Transaction
+        if (updateTransaction(formData)) {
+            displayStatusMessage(`Transaction ID ${String(transactionId).padStart(4, '0')} updated successfully!`, 'success');
         } else {
-             showStatusMessage(formStatus, 'Error updating transaction.', 'error');
+            displayStatusMessage('Error: Could not find transaction to update.', 'error');
         }
     } else {
+        // ADD New Transaction
         addTransaction(formData);
-        success = true;
-        showStatusMessage(formStatus, 'Transaction successfully ADDED!', 'success');
+        displayStatusMessage('Transaction saved successfully!', 'success');
     }
 
-    if (success) {
-        saveTransactions(transactions); 
-        renderDashboardSummary();      
-        renderRecordsTable();          
-        
-        // Reset form for next entry
-        resetTransactionForm();
+    masterRender();
+    clearForm(); 
+}
+
+/**
+ * Handles table clicks for Delete and Edit actions.
+ */
+function handleTableClick(event) {
+    const target = event.target;
+    
+    // --- DELETE ACTION ---
+    if (target.closest('.btn-delete')) {
+        const deleteButton = target.closest('.btn-delete');
+        const id = parseInt(deleteButton.dataset.id);
+        const formattedId = String(id).padStart(4, '0');
+
+        if (confirm(`Are you sure you want to delete transaction ID ${formattedId}?`)) {
+            if (deleteTransaction(id)) {
+                masterRender();
+                displayStatusMessage('Transaction deleted.', 'success');
+            }
+        }
+    }
+
+    // --- EDIT ACTION ---
+    if (target.closest('.btn-edit')) {
+        const editButton = target.closest('.btn-edit');
+        const id = parseInt(editButton.dataset.id);
+        const transactionToEdit = transactions.find(t => t.id === id);
+
+        if (transactionToEdit) {
+            // 1. Populate the form fields
+            DOMElements.transactionIdInput.value = id; 
+            DOMElements.transactionForm.description.value = transactionToEdit.description;
+            // Use Math.abs in case it was a negative credit entry, but don't force positive, just use the value
+            DOMElements.transactionForm.amount.value = parseFloat(transactionToEdit.amount).toFixed(2); 
+            DOMElements.transactionForm.category.value = transactionToEdit.category;
+            DOMElements.transactionForm.date.value = transactionToEdit.date;
+            
+            // 2. Change button text and scroll to form
+            DOMElements.saveTransactionBtn.textContent = `Update Transaction ${String(id).padStart(4, '0')}`;
+            document.getElementById('add-transaction-heading').scrollIntoView({ behavior: 'smooth' });
+
+            displayStatusMessage(`Editing Transaction ID ${String(id).padStart(4, '0')}. Click 'Update' or 'Clear Form'.`, 'info');
+        } else {
+            displayStatusMessage('Error: Transaction not found.', 'error');
+        }
     }
 }
 
-// --- Search and Sort Handlers ---
-
-function handleSortOrderToggle() {
-    settings.sortOrder = settings.sortOrder === 'asc' ? 'desc' : 'asc';
-    saveSettings(settings);
-    DOMElements.sortOrderBtn.textContent = settings.sortOrder === 'desc' ? '⬇️' : '⬆️';
-    renderRecordsTable();
-}
-
-function handleSortChange() {
-    settings.sortKey = DOMElements.sortBySelect.value;
-    saveSettings(settings);
-    renderRecordsTable();
-}
-
-
-// --- Settings Handlers ---
-
-function handleSettingsFormSubmit(event) {
+/**
+ * FIX: Handles the settings form submission.
+ */
+function handleSettingsSubmit(event) {
     event.preventDefault();
 
     const newSettings = {
         baseCurrency: DOMElements.baseCurrencySelect.value,
-        secondaryCurrency: DOMElements.secondaryCurrencySelect.value,
         budgetCap: parseFloat(DOMElements.budgetCapInput.value) || 0,
-        exchangeRates: { USD: 1 }, 
     };
 
-    // Gather manual exchange rates
-    let ratesValid = true;
-    document.querySelectorAll('#exchange-rates-grid input').forEach(input => {
-        const currencyCode = input.name;
-        const rate = parseFloat(input.value);
-        if (isNaN(rate) || rate <= 0) {
-            ratesValid = false;
-        }
-        newSettings.exchangeRates[currencyCode] = rate;
-    });
-
-    if (!ratesValid) {
-        showStatusMessage(DOMElements.settingsStatus, 'Error: All exchange rates must be positive numbers.', 'error', 5000);
-        return;
-    }
-    
-    // Update state and storage
     updateSettings(newSettings);
-    saveSettings(settings);
-
-    // Re-render UI elements that rely on settings
-    renderSettings();
-    renderDashboardSummary();
-    renderRecordsTable(); 
-    
-    showStatusMessage(DOMElements.settingsStatus, 'Settings successfully saved!', 'success');
+    masterRender();
+    displayStatusMessage('Settings saved successfully!', 'success', DOMElements.settingsStatus);
 }
 
-function handleExportData() {
-    const exportData = {
-        settings: settings,
+/**
+ * Handles the Export Data button click.
+ */
+function handleExport() {
+    const dataToExport = {
         transactions: transactions,
-        exportDate: new Date().toISOString(),
-        version: '1.0.0', 
+        settings: settings,
     };
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
+    const dataStr = JSON.stringify(dataToExport, null, 2); 
+    const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sft-data-backup-${new Date().toISOString().slice(0, 10)}.json`; 
-    
+    a.download = `sft_backup_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-
-    showStatusMessage(DOMElements.settingsStatus, 'Data successfully EXPORTED to JSON file!', 'success');
+    displayStatusMessage('Data exported successfully!', 'success', DOMElements.settingsStatus);
 }
 
-function handleImportData(event) {
+/**
+ * FIX: Handles the file selection for importing data with validation.
+ */
+function handleImportFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -461,130 +387,145 @@ function handleImportData(event) {
     reader.onload = function(e) {
         try {
             const importedData = JSON.parse(e.target.result);
-            
-            if (Array.isArray(importedData.transactions) && importedData.settings) {
-                
-                // 1. Process Settings: Merge with existing settings to ensure all keys are present
-                const defaultRates = { USD: 1, RWF: 1000, EUR: 0.92, GBP: 0.81, KES: 130, ZAR: 18.5, GHS: 14.8 };
-                const importedRates = { ...defaultRates, ...importedData.settings.exchangeRates, USD: 1 };
 
-                const newSettings = { 
-                    ...settings, 
-                    ...importedData.settings,
-                    exchangeRates: importedRates 
-                };
-
-                // 2. Apply and Save Data
-                initializeState(importedData.transactions); 
-                updateSettings(newSettings);      
-
-                saveTransactions(transactions);
-                saveSettings(settings);
-
-                // 3. Re-render UI
-                renderSettings();
-                renderDashboardSummary();
-                renderRecordsTable();
-
-                showStatusMessage(DOMElements.settingsStatus, `Successfully IMPORTED ${transactions.length} transactions!`, 'success');
-            } else {
-                throw new Error("JSON file missing 'transactions' or 'settings' object.");
+            // REQUIRED: Validate JSON structure before loading
+            if (!importedData || !Array.isArray(importedData.transactions) || !importedData.settings) {
+                displayStatusMessage('Error: Imported JSON must contain a "transactions" array and a "settings" object.', 'error', DOMElements.settingsStatus);
+                return;
             }
+
+            initializeState(importedData.transactions, importedData.settings);
+            
+            masterRender();
+            displayStatusMessage('Data imported and loaded successfully!', 'success', DOMElements.settingsStatus);
+            DOMElements.importFile.value = '';
+
         } catch (error) {
-            console.error("Error importing data:", error);
-            showStatusMessage(DOMElements.settingsStatus, `Error importing file: ${error.message || 'Invalid JSON format.'}`, 'error', 5000);
+            console.error("Import JSON parsing error:", error);
+            displayStatusMessage('Error: The file is not a valid JSON format.', 'error', DOMElements.settingsStatus);
+            DOMElements.importFile.value = '';
         }
     };
+    reader.onerror = () => {
+        displayStatusMessage('Error reading file.', 'error', DOMElements.settingsStatus);
+    };
     reader.readAsText(file);
-    event.target.value = ''; 
 }
 
+/**
+ * Handles the Clear All Data button click.
+ */
 function handleClearAllData() {
-    if (confirm('WARNING: Are you sure you want to clear ALL saved data (transactions and settings)? This cannot be undone.')) {
-        clearAllData();
-        initializeState([]); // Reset transactions array
-        updateSettings({ 
-            budgetCap: 0, baseCurrency: 'USD', secondaryCurrency: 'RWF', 
-            exchangeRates: { USD: 1, RWF: 1000, EUR: 0.92, GBP: 0.81, KES: 130, ZAR: 18.5, GHS: 14.8 },
-            sortKey: 'date', sortOrder: 'desc'
-        }); // Reset settings
-        
-        // Re-render
-        if (DOMElements.settingsForm) renderSettings();
-        if (DOMElements.transactionForm) {
-            renderDashboardSummary();
-            renderRecordsTable();
-            resetTransactionForm();
-        }
-
-        showStatusMessage(DOMElements.settingsStatus || document.getElementById('form-status'), 'All data successfully CLEARED!', 'error', 5000);
+    if (confirm('WARNING: This will permanently delete ALL transactions and settings. Are you sure?')) {
+        clearAllData(); 
+        initializeState([], { budgetCap: 0, baseCurrency: 'USD', sortKey: 'date', sortOrder: 'desc' });
+        masterRender();
+        displayStatusMessage('All application data has been cleared.', 'success', DOMElements.settingsStatus);
     }
 }
 
+/**
+ * Displays a transient status message (success/error).
+ */
+function displayStatusMessage(message, type, targetElement = document.getElementById('form-status')) {
+    if (!targetElement) return;
 
-// --- 6. INITIALIZATION ---
+    targetElement.textContent = message;
+    targetElement.className = `status-message ${type}`;
 
-function init() {
-    // A. Load Data (FIX: Ensure data is loaded at start)
-    const storedTransactions = loadTransactions();
-    const storedSettings = loadSettings();
+    setTimeout(() => {
+        targetElement.className = 'status-message';
+        targetElement.textContent = '';
+    }, 4000);
+}
 
-    initializeState(storedTransactions);
-    if (storedSettings) {
-        updateSettings(storedSettings); 
-    }
-    
-    // B. Set up Event Listeners (Transaction Form is only on index.html)
-    if (DOMElements.transactionForm) {
-        DOMElements.transactionForm.addEventListener('submit', handleTransactionFormSubmit);
-        DOMElements.regexSearchInput.addEventListener('input', renderRecordsTable);
-        DOMElements.sortBySelect.addEventListener('change', handleSortChange);
-        DOMElements.sortOrderBtn.addEventListener('click', handleSortOrderToggle);
-    }
+/**
+ * General Navigation and Active Link Handler
+ */
+function handleNavigationAndSearch() {
+    const currentPath = window.location.pathname.split('/').pop() || 'index.html';
 
-    // C. Settings Page Event Listeners
-    if (DOMElements.settingsForm) {
-        DOMElements.settingsForm.addEventListener('submit', handleSettingsFormSubmit);
-        DOMElements.exportBtn.addEventListener('click', handleExportData);
-        DOMElements.importFile.addEventListener('change', handleImportData);
-        DOMElements.clearAllBtn.addEventListener('click', handleClearAllData);
-    }
-
-    // D. Global Search Button (FIX: Corrected global search logic)
-    document.querySelector('.search-btn')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        const isIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
-        const controlsSection = document.getElementById('controls-section');
-
-        if (isIndexPage && controlsSection) {
-            // Scroll to the records/search area and focus the search input
-            controlsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            DOMElements.regexSearchInput?.focus();
-        } else {
-            // Navigate to the index page with a hash to hint the location
-            window.location.href = 'index.html#controls-section';
-        }
-    });
-
-    // E. Initial Render
-    if (DOMElements.transactionForm) {
-        renderDashboardSummary();
-        renderRecordsTable();
-    }
-    if (DOMElements.settingsForm) {
-        renderSettings();
-    }
-    
-    // F. Final navigation check (highlight active link)
-    document.querySelectorAll('.nav-menu a').forEach(link => {
+    // 1. Navigation Active State
+    document.querySelectorAll('.nav-menu .nav-link').forEach(link => {
         link.classList.remove('active');
-        const href = link.getAttribute('href');
-        // Check if the current URL matches the link's href or if it's the dashboard link on the root/index page
-        if (window.location.href.includes(href) || 
-            (link.dataset.page === "dashboard" && (window.location.pathname === '/' || window.location.pathname.endsWith('index.html')))) {
+        const linkPath = link.getAttribute('href').split('/').pop() || 'index.html';
+        
+        if (linkPath === currentPath) {
             link.classList.add('active');
         }
     });
+
+    // 2. Search Button Action
+    if (DOMElements.searchBtn) {
+        DOMElements.searchBtn.addEventListener('click', () => {
+            // Only try to focus or scroll if we are on the dashboard/index page
+            if (currentPath === 'index.html' || currentPath === '') {
+                DOMElements.regexSearchInput?.focus();
+                document.getElementById('records-table')?.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                // If not on index, redirect to index and scroll
+                window.location.href = 'index.html#records-table';
+            }
+        });
+    }
+}
+
+
+// 5. INITIALIZATION
+function init() {
+    // A. Load data from local storage first
+    const loadedTransactions = loadTransactions();
+    const loadedSettings = loadSettings();
+    initializeState(loadedTransactions, loadedSettings);
+
+    // B. Set up event listeners
+    if (DOMElements.transactionForm) {
+        DOMElements.transactionForm.addEventListener('submit', handleTransactionSubmit);
+    }
+    if (DOMElements.recordsTbody) {
+        DOMElements.recordsTbody.addEventListener('click', handleTableClick);
+    }
+    if (DOMElements.clearFormBtn) {
+        DOMElements.clearFormBtn.addEventListener('click', clearForm);
+    }
+
+    // Sort controls listeners
+    if (DOMElements.sortBySelect) {
+        DOMElements.sortBySelect.value = settings.sortKey; 
+        DOMElements.sortBySelect.addEventListener('change', (e) => {
+            updateSettings({ sortKey: e.target.value });
+            masterRender();
+        });
+    }
+
+    if (DOMElements.sortOrderBtn) {
+        DOMElements.sortOrderBtn.textContent = settings.sortOrder === 'desc' ? '🔽' : '🔼'; 
+        DOMElements.sortOrderBtn.addEventListener('click', () => {
+            const newOrder = settings.sortOrder === 'desc' ? 'asc' : 'desc';
+            updateSettings({ sortOrder: newOrder });
+            DOMElements.sortOrderBtn.textContent = newOrder === 'desc' ? '🔼' : '🔽';
+            masterRender();
+        });
+    }
+
+    // FIX: Search listener added to trigger re-render on input
+    if (DOMElements.regexSearchInput) {
+        DOMElements.regexSearchInput.addEventListener('input', renderTransactionTable); 
+    }
+    
+    // C. Settings Page Listeners
+    if (DOMElements.settingsForm) {
+        DOMElements.settingsForm.addEventListener('submit', handleSettingsSubmit);
+        DOMElements.exportBtn.addEventListener('click', handleExport);
+        DOMElements.importFile.addEventListener('change', handleImportFileSelect);
+        DOMElements.clearAllBtn.addEventListener('click', handleClearAllData);
+    }
+
+    // D. Global Navigation and Search button helper
+    handleNavigationAndSearch();
+
+    // E. Initial render after loading data
+    masterRender();
 }
 
 // Start the entire application!
