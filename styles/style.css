@@ -1,8 +1,6 @@
-/* styles/style.css - CONSOLIDATED FILE (Base Styles + Responsive Overrides) */
+/* styles/style.css */
 
-/* -------------------------------------------------------------------------- */
-/* 1. Global Setup and Colors (Mobile-First) */
-/* -------------------------------------------------------------------------- */
+/* 1. Global Setup and Colors (White, Blue, Red) */
 :root {
     --color-primary: #0033A0; /* ALU Blue */
     --color-accent: #E03C31;  /* ALU Red */
@@ -10,9 +8,7 @@
     --color-dark: #333333;
     --color-light-bg: #F4F4F9; 
     --color-success: #28a745; /* Green for success */
-    /* Status Message Colors */
-    --color-status-success: #d4edda; 
-    --color-status-error: #f8d7da;   
+    --color-warning: #ffc107; /* Yellow for mark highlighting */
 }
 
 /* Base Reset and Box Sizing */
@@ -30,9 +26,9 @@ body {
     min-height: 100vh;
 }
 
-/* FIX: Reduced side spacing on mobile (98% width) */
 .container {
-    width: 98%; 
+    width: 90%;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 0 10px;
 }
@@ -42,241 +38,158 @@ body {
     position: absolute;
     top: -9999px; 
     left: 0;
-    background: var(--color-accent);
+    background-color: var(--color-accent);
     color: var(--color-white);
     padding: 8px;
-    z-index: 100;
-    text-decoration: none;
+    z-index: 1000;
 }
 .skip-link:focus {
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    /* OVERRIDE default focus */
+    outline: none; 
+    box-shadow: 0 0 0 3px var(--color-primary); 
 }
 
-:focus {
-    outline: 3px solid var(--color-accent);
+/* REQUIRED: Visible Focus Style */
+*:focus {
+    outline: 3px solid var(--color-accent); /* ALU Red focus ring */
     outline-offset: 2px;
 }
 
-/* 3. Header Styling (Mobile-First) */
+/* REQUIRED: Regex Search Highlight */
+mark {
+    background-color: var(--color-warning); /* Yellow highlight */
+    color: var(--color-dark);
+    padding: 2px 0;
+    /* Minimal animation on load */
+    transition: background-color 0.3s ease;
+}
+
+/* 3. Header and Navigation */
 .main-header {
     background-color: var(--color-primary);
     color: var(--color-white);
     padding: 10px 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
-
 .header-container {
     display: flex;
-    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
-}
-
-.logo a {
-    display: block;
-    line-height: 0;
 }
 .logo img {
-    height: 40px;
-    width: auto;
-    object-fit: contain;
+    height: 40px; 
+    transition: transform 0.3s ease;
 }
-
-/* Navigation Bar (Mobile) */
-.main-nav {
-    flex-basis: 100%;
-    order: 1;
-    margin-top: 10px;
-    background-color: var(--color-white);
-    padding: 5px 0;
-    border-radius: 5px;
+.logo img:hover {
+    transform: scale(1.05);
 }
-
-.nav-menu {
+.main-nav ul {
     list-style: none;
     display: flex;
-    justify-content: space-evenly; 
-    align-items: center;
-    padding: 0;
+    gap: 20px;
 }
-
-/* Styling to display both text and icon */
 .nav-link {
-    display: flex; 
-    flex-direction: column; /* Stack icon and text vertically on mobile */
-    align-items: center;
-    padding: 8px 5px;
-    text-decoration: none;
-    color: var(--color-dark);
-    font-weight: bold;
-    font-size: 0.8rem; /* Size for the text label */
-    line-height: 1.2;
-    text-align: center;
-    transition: color 0.3s, background-color 0.3s;
-    font-family: Arial, "Segoe UI Emoji", sans-serif; 
-}
-/* Styling for the icon part (assuming the HTML change was made) */
-.nav-link [data-icon] {
-    font-size: 1.4rem; /* Size for the icon part */
-    line-height: 1;
-    margin-bottom: 2px;
-}
-
-
-.nav-link.active {
-    color: var(--color-primary);
-    border-bottom: 3px solid var(--color-accent); 
-    background-color: var(--color-light-bg);
-    border-radius: 3px;
-}
-
-.nav-link:hover {
-    color: var(--color-primary);
-    background-color: var(--color-light-bg);
-}
-
-/* Header Actions (Search & New Expense button) */
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    order: 2;
-}
-
-.search-btn {
-    background: transparent;
-    border: none;
     color: var(--color-white);
-    font-size: 1.4rem;
-    cursor: pointer;
-    padding: 5px;
-    transition: color 0.3s;
-}
-.search-btn:hover {
-    color: var(--color-accent);
-}
-
-.header-btn-apply {
-    background-color: var(--color-accent);
-    color: var(--color-white);
-    padding: 8px 15px;
-    border-radius: 5px;
     text-decoration: none;
-    font-weight: bold;
-    font-size: 0.8rem;
-    transition: background-color 0.3s;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.3s, color 0.3s;
+}
+.nav-link:hover, .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: var(--color-white);
 }
 
-.header-btn-apply:hover {
-    background-color: #b02a24;
-}
-
-
-/* 4. Main Content, Headings, and Sections */
-main {
-    padding-bottom: 50px; 
-}
-
-.content-section {
-    padding: 25px 0;
-    min-height: 75vh; 
-}
-
-h2 {
-    font-size: 2rem;
-    color: var(--color-primary);
-    border-bottom: 2px solid var(--color-light-bg);
-    padding-bottom: 10px;
-    margin-bottom: 25px;
-}
-
-h3 {
-    color: var(--color-accent);
-    margin-top: 15px;
-    margin-bottom: 10px;
-    font-size: 1.3rem;
-}
-
-/* 5. Forms and Inputs (Mobile-First) */
-.form-group {
-    margin-bottom: 18px;
-    display: flex;
-    flex-direction: column; 
-}
-
-label {
-    margin-bottom: 6px;
-    font-weight: 600;
-}
-
-input[type="text"],
-input[type="number"],
-input[type="date"],
-select,
-textarea {
-    width: 100%; 
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 1rem;
-}
-
-.error-message {
-    color: var(--color-accent); 
-    font-size: 0.9rem;
-    margin-top: 4px;
-    font-weight: bold;
-    min-height: 18px; 
-}
-
-.form-actions {
-    margin-top: 25px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-
-/* 6. Buttons */
+/* 4. Buttons and Forms */
 .btn {
     padding: 10px 15px;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    transition: background-color 0.3s;
+    text-decoration: none;
     text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    transition: background-color 0.3s ease, transform 0.1s ease;
 }
-
 .btn-primary {
-    background-color: var(--color-primary); 
+    background-color: var(--color-accent); /* Red */
     color: var(--color-white);
 }
+.btn-primary:hover {
+    background-color: #c0392b;
+    transform: translateY(-1px);
+}
 .btn-secondary {
-    background-color: var(--color-light-bg); 
+    background-color: #ccc;
     color: var(--color-dark);
-    border: 1px solid #ccc;
+}
+.btn-secondary:hover {
+    background-color: #bbb;
 }
 .btn-danger {
-    background-color: var(--color-accent); 
-    /* FIX: Ensure Clear All Data text is white */
-    color: var(--color-white) !important; 
-    white-space: nowrap; 
+    background-color: var(--color-accent);
+    color: var(--color-white);
+}
+.btn-danger:hover {
+    background-color: #a02d23;
+}
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 5px;
+    color: var(--color-primary);
+}
+.btn-icon:hover {
+    color: var(--color-accent);
 }
 
-/* 7. Dashboard and Table Styling (Mobile) */
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.error-message {
+    color: var(--color-accent);
+    font-size: 0.9em;
+    display: block;
+    margin-top: 5px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* 5. Dashboard and Stats */
+main {
+    padding: 30px 0;
+}
+.content-section h2 {
+    color: var(--color-primary);
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--color-light-bg);
+    padding-bottom: 5px;
+}
+
+/* Mobile-First Grid (Default: Single Column) */
 .stats-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; 
     gap: 15px;
     margin-bottom: 30px;
 }
@@ -286,262 +199,219 @@ textarea {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); 
-    text-align: center;
+    transition: all 0.3s ease; /* Animation/Transition requirement */
+}
+.stat-card:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); 
+    transform: translateY(-2px);
+}
+.stat-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 5px;
 }
 .stat-value {
     font-size: 2.2rem;
     font-weight: bold;
     color: var(--color-primary); 
 }
+.stat-card.bg-red .stat-value {
+    color: var(--color-accent);
+}
+.stat-card.bg-green .stat-value {
+    color: var(--color-success);
+}
 
+/* 6. Table Styles */
 .controls-section {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; 
     gap: 15px;
     margin-bottom: 20px;
 }
-.search-box input[type="text"] {
-    margin-bottom: 0;
+.sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
-
 .table-wrapper {
-    overflow-x: auto;
+    overflow-x: auto; 
     width: 100%;
     margin-top: 10px;
 }
-
 #records-table {
     width: 100%;
     border-collapse: collapse;
     background-color: var(--color-white);
-    font-size: 0.9rem; 
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 #records-table th, #records-table td {
-    padding: 10px 8px;
+    padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid #eee;
 }
 #records-table th {
     background-color: var(--color-light-bg);
-    font-weight: 600;
-    color: var(--color-primary);
+    color: var(--color-dark);
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+#records-table tbody tr:last-child td {
+    border-bottom: none;
+}
+#records-table td:nth-child(4) { /* Amount column */
+    font-weight: bold;
 }
 
-/* Table Action Buttons (Edit/Delete Icons) */
-.action-cell {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
+
+/* 7. Settings Page Styles */
+.settings-group {
+    background-color: var(--color-white);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
-.btn-icon {
-    font-size: 1.1rem;
-    padding: 4px 6px;
-    background: none;
-    border: none;
-    cursor: pointer;
-}
-/* Note: The red color for delete comes from the general .btn-danger class */
-.btn-edit {
+.settings-group h3 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
     color: var(--color-primary);
 }
-
-/* Data Management Actions (Mobile Stacking) */
+.budget-status {
+    font-weight: bold;
+    color: var(--color-success);
+    margin-bottom: 10px;
+}
 .data-actions {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin-top: 15px;
+}
+.import-label {
+    display: inline-block;
+    cursor: pointer;
+    width: 100%;
+}
+#settings-status {
+    margin-top: 15px;
+    font-weight: bold;
 }
 
+/* 8. Footer */
+footer {
+    background-color: var(--color-dark);
+    color: #bbb;
+    padding: 15px 0;
+    text-align: center;
+    font-size: 0.9rem;
+}
 
-/* 8. Status Message Styling */
+/* 9. Utility Classes (ARIA Live Status) */
 .status-message {
     padding: 10px;
     margin-top: 15px;
     border-radius: 5px;
     font-weight: bold;
-    text-align: center;
-    visibility: hidden; 
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out, visibility 0s 0.3s;
 }
-
 .status-message.success {
-    background-color: var(--color-status-success);
+    background-color: #d4edda;
     color: var(--color-success);
-    border: 1px solid var(--color-success);
-    visibility: visible;
-    opacity: 1;
-    transition: opacity 0.3s ease-in-out;
+    border: 1px solid #c3e6cb;
 }
-
 .status-message.error {
-    background-color: var(--color-status-error);
+    background-color: #f8d7da;
     color: var(--color-accent);
-    border: 1px solid var(--color-accent);
-    visibility: visible;
-    opacity: 1;
-    transition: opacity 0.3s ease-in-out;
+    border: 1px solid #f5c6cb;
+}
+.status-message.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
 }
 
-/* 9. Settings Page Styles */
-.settings-group {
-    margin-top: 25px;
-    padding-top: 10px;
-    border-top: 1px solid #ddd;
-}
-.exchange-rates-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    padding: 10px;
-    background-color: var(--color-white);
-    border-radius: 8px;
-    border: 1px solid var(--color-light-bg);
-}
+/* --- RESPONSIVE DESIGN (Media Queries) --- */
 
-.exchange-rate-group {
-    display: flex;
-    flex-direction: column;
-}
-
-/* 10. Footer */
-footer {
-    background-color: var(--color-dark);
-    color: #aaaaaa;
-    text-align: center;
-    padding: 15px 0;
-    font-size: 0.8rem;
-}
-
-.no-underline {
-    text-decoration: none !important;
-}
-
-
-/* -------------------------------------------------------------------------- */
-/* TABLET (Medium Screens: 768px and up) - Responsive Overrides */
-/* -------------------------------------------------------------------------- */
+/* Tablet View (768px and up) */
 @media (min-width: 768px) {
-    /* FIX: Container width slightly increased for tablet */
-    .container {
-        width: 95%; 
-    }
-
-    /* Header & Navigation */
-    .header-container {
-        flex-wrap: nowrap;
-        gap: 20px;
-    }
-    .main-nav {
-        flex-basis: auto;
-        order: 0;
-        margin-top: 0;
-        background-color: transparent;
-        padding: 0;
-        flex-grow: 1;
-    }
-    .nav-menu {
-        justify-content: flex-start;
-        gap: 30px; 
-    }
-
-    /* Desktop/Tablet Nav - Horizontal display with white text/icon */
-    .nav-link {
-        color: var(--color-white); 
-        flex-direction: row; 
-        gap: 5px;
-        padding: 10px 15px;
-        font-size: 1rem; 
-    }
-    .nav-link [data-icon] {
-        font-size: 1.4rem;
-        margin-bottom: 0;
-    }
-    .nav-link.active {
-        color: var(--color-accent);
-        border-bottom: 3px solid var(--color-accent); 
-        background-color: transparent;
-        border-radius: 0;
-    }
-    .nav-link:hover {
-        color: var(--color-accent);
-        background-color: transparent;
-    }
-    .search-btn {
-        font-size: 1.8rem;
-    }
-    
-    /* Dashboard Stats Grid */
     .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
+        grid-template-columns: repeat(2, 1fr); /* Two columns on tablet */
     }
-    
-    /* Forms and Controls */
-    .form-actions {
-        flex-direction: row;
-        gap: 20px;
-    }
-    .form-actions .btn {
-        flex-grow: 1;
-    }
-
     .controls-section {
         flex-direction: row;
         justify-content: space-between;
         align-items: center;
     }
-    .search-box {
-        flex-grow: 1;
-        max-width: 400px;
-    }
-    .search-box input[type="text"] {
-        margin-bottom: 0;
-    }
-
-    /* Settings Data Actions */
     .data-actions {
         flex-direction: row;
-        gap: 20px;
-        justify-content: flex-start;
+        gap: 15px;
+    }
+    .import-label {
+        width: auto;
     }
 }
 
-
-/* -------------------------------------------------------------------------- */
-/* DESKTOP (Large Screens: 1024px and up) - Responsive Overrides */
-/* -------------------------------------------------------------------------- */
+/* Desktop View (1024px and up) */
 @media (min-width: 1024px) {
-    /* FIX: Container width slightly increased for desktop */
-    .container {
-        width: 90%; 
-        max-width: 1200px;
-    }
-    
-    /* Dashboard Stats Grid */
     .stats-grid {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, 1fr); /* Four columns on desktop */
     }
-    
-    /* Transaction Form Layout */
-    .transaction-form {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 20px;
+    .header-actions {
+        display: flex;
+        gap: 15px;
     }
-    .form-group {
-        margin-bottom: 0;
-    }
-    .form-actions {
-        grid-column: 1 / -1;
-        justify-content: flex-start;
-    }
-    .form-actions .btn {
-        flex-grow: 0;
-        min-width: 180px;
-    }
+}
 
-    /* About Page Contact Form */
+/* Mobile Table Card View (767px and down) */
+@media (max-width: 767px) {
+    /* Table to Card Conversion */
+    #records-table {
+        border: none;
+        box-shadow: none;
+    }
+    #records-table, #records-tbody, #records-table tr, #records-table th, #records-table td {
+        display: block;
+        width: 100%;
+    }
+    #records-table thead {
+        display: none; /* Hide header row */
+    }
+    #records-table tr {
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    #records-table td {
+        text-align: right;
+        padding: 8px 10px;
+        padding-left: 50%; /* Space for label */
+        position: relative;
+        border: none;
+        font-size: 0.95rem;
+    }
+    /* REQUIRED: Use data-label for a11y on mobile tables */
+    #records-table td::before {
+        content: attr(data-label) ": ";
+        position: absolute;
+        left: 10px;
+        width: calc(50% - 20px);
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        color: var(--color-primary);
+    }
+    .stat-card:hover {
+        transform: none; /* Disable hover animation on tiny screens */
+    }
+        /* About Page Contact Form */
     .contact-form {
         display: grid;
         grid-template-columns: 1fr 1fr;
