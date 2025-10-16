@@ -1,5 +1,7 @@
 # Student Finance Tracker
 
+## Live URL (https://dumethode.github.io/frontend-finance-tracker/)
+
 **Simple and fast web application designed to help students track their expenses, understand where their money goes, and manage their budget.**
 
 This application is built entirely with frontend technologies (HTML, CSS, JavaScript) and saves all data directly inside your web browser. It works perfectly even without an internet connection.
@@ -34,6 +36,9 @@ Because this is a pure frontend application, you do not need any special server 
 * **HTML5** (Structure)
 * **CSS3** (Styling and Mobile Responsiveness)
 * **Vanilla JavaScript** (Logic, State Management, and Local Storage)
+
+## Demo Video (https://youtu.be/1j2pHQeWfZI)
+
 
 ---
 
