@@ -19,16 +19,15 @@
                 </a>
             </div>
             <nav class="main-nav" aria-label="Main navigation">
-    <ul class="nav-menu">
-        <li><a href="index.html" class="nav-link active" data-page="dashboard" title="Dashboard" aria-label="Go to Dashboard"><span data-icon>&#x1F4CA;</span> Dashboard</a></li>
-        <li><a href="index.html#records-table" class="nav-link" data-page="records" title="Records" aria-label="View Records Table"><span data-icon>&#x1F4DC;</span> Records</a></li>
-        <li><a href="about.html" class="nav-link" data-page="about" title="About" aria-label="About the Tracker"><span data-icon>&#x1F4C3;</span> About</a></li>
-        <li><a href="settings.html" class="nav-link" data-page="settings" title="Settings" aria-label="Go to Settings"><span data-icon>&#x2699;</span> Settings</a></li>
-    </ul>
-</nav>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link active" data-page="dashboard">Dashboard</a></li>
+                    <li><a href="about.html" class="nav-link" data-page="about">About Student Finance Tracker</a></li>
+                    <li><a href="settings.html" class="nav-link" data-page="settings">Settings</a></li>
+                </ul>
+            </nav>
             <div class="header-actions">
-                <button class="search-btn" aria-label="Search">&#x1F50D;</button>
-                <a href="index.html#add-transaction-heading" class="btn header-btn-apply" data-page="add-transaction">New Expense</a>
+                <button class="search-btn" aria-label="Quick search records">🔍</button>
+                <a href="#add-transaction-heading" class="btn header-btn-apply" data-page="add-transaction">New Expense</a>
             </div>
         </div>
     </header>
@@ -37,43 +36,43 @@
         <div class="container">
 
             <section id="dashboard" class="content-section" aria-labelledby="dashboard-heading">
-                <h2 id="dashboard-heading">Dashboard Summary</h2>
+                <h2 id="dashboard-heading">Financial Snapshot</h2>
                 
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <h3>Total Spent This Month</h3>
-                        <p class="stat-value" id="total-spent">$0.00</p>
+                        <p class="stat-label">Total Spent</p>
+                        <p class="stat-value" id="total-spent">USD 0.00</p>
+                    </div>
+                    <div class="stat-card bg-green">
+                        <p class="stat-label">Budget Remaining</p>
+                        <p class="stat-value" id="budget-remaining" role="status" aria-live="polite">USD 0.00</p>
                     </div>
                     <div class="stat-card">
-                        <h3>Budget Remaining</h3>
-                        <p class="stat-value" id="budget-remaining">$0.00</p>
+                        <p class="stat-label">Top Category</p>
+                        <p class="stat-value" id="top-category">N/A</p>
                     </div>
                     <div class="stat-card">
-                        <h3>Top Expense Category</h3>
-                        <p class="stat-value" id="top-category">None</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Total Transactions</h3>
+                        <p class="stat-label">Total Records</p>
                         <p class="stat-value" id="total-transactions">0</p>
                     </div>
                 </div>
 
-                <h2 style="margin-top: 30px;" id="records-heading">Transaction Records</h2>
-                
-                <div id="controls-section" class="controls-section"> 
+                <h2 style="margin-top: 40px;">Transaction Records</h2>
+                <div class="controls-section">
                     <div class="search-box">
-                        <label for="regex-search" class="visually-hidden">Search Transactions</label>
-                        <input type="text" id="regex-search" placeholder="&#x1F50D; Search by description (supports regex)">
+                        <label for="regex-search">Search Description:</label>
+                        <input type="text" id="regex-search" placeholder="Filter with text or regex (e.g., ^food or /\.\d{2}\b/)">
                     </div>
                     <div class="sort-controls">
                         <label for="sort-by">Sort By:</label>
                         <select id="sort-by">
                             <option value="date">Date</option>
+                            <option value="createdAt">Created At</option>
                             <option value="amount">Amount</option>
                             <option value="category">Category</option>
                             <option value="description">Description</option>
                         </select>
-                        <button id="sort-order-btn" class="btn btn-secondary" aria-label="Toggle sort order">&#x2B07;</button>
+                        <button id="sort-order-btn" class="btn-icon" aria-label="Change sort order">🔽</button>
                     </div>
                 </div>
 
@@ -81,10 +80,12 @@
                     <table id="records-table">
                         <thead>
                             <tr>
-                                <th>Description</th>
+                                <th>ID</th>
+                                <th>Created At</th>
+                                <th>Date</th>
                                 <th>Amount</th>
                                 <th>Category</th>
-                                <th>Date</th>
+                                <th>Description</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -92,31 +93,30 @@
                             </tbody>
                     </table>
                 </div>
-                <p id="no-records-message" style="text-align: center; margin-top: 20px; display: none;">No records found. Add a transaction above.</p>
             </section>
 
-            <section id="add-transaction" class="content-section" aria-labelledby="add-transaction-heading">
+            <section id="add-new-transaction" class="form-section">
                 <h2 id="add-transaction-heading">Add New Transaction</h2>
-                <form id="transaction-form" class="transaction-form">
-                    
-                    <input type="hidden" id="transaction-id-input" name="id" value=""> 
+                
+                <form id="transaction-form" novalidate>
+                    <input type="hidden" id="transaction-id" name="id" value="">
 
                     <div class="form-group">
                         <label for="description">Description *</label>
-                        <input type="text" id="description" name="description" required placeholder="e.g., Lunch at ALU Cafeteria">
+                        <input type="text" id="description" name="description" required maxlength="100">
                         <span class="error-message" id="description-error"></span>
                     </div>
 
                     <div class="form-group">
                         <label for="amount">Amount *</label>
-                        <input type="number" id="amount" name="amount" min="-1000000" step="0.01" required placeholder="e.g., 5.00 or -50.00 for refund">
+                        <input type="number" id="amount" name="amount" step="0.01" required placeholder="e.g., 12.50 or -5.00 for credit">
                         <span class="error-message" id="amount-error"></span>
                     </div>
-
+                    
                     <div class="form-group">
                         <label for="category">Category *</label>
                         <select id="category" name="category" required>
-                            <option value="">Select a Category</option>
+                            <option value="">-- Select Category --</option>
                             <option value="Food">Food</option>
                             <option value="Books">Books/Supplies</option>
                             <option value="Transport">Transport</option>
@@ -128,17 +128,17 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="date">Date *</label>
+                        <label for="date">Date (YYYY-MM-DD) *</label>
                         <input type="date" id="date" name="date" required>
                         <span class="error-message" id="date-error"></span>
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" id="save-transaction-btn" class="btn btn-primary">Save Transaction</button>
-                        <button type="reset" class="btn btn-secondary">Clear Form</button>
+                        <button type="submit" class="btn btn-primary">Save Transaction</button>
+                        <button type="button" id="clear-form-btn" class="btn btn-secondary">Clear Form</button> 
                     </div>
 
-                    <div id="form-status" role="status" aria-live="polite" class="status-message"></div>
+                    <div id="form-status" role="status" aria-live="polite"></div>
                 </form>
 
             </section>
